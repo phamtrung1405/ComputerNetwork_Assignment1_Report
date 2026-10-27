@@ -1,0 +1,65 @@
+\section{Đặc tả Giao thức}
+
+Ứng dụng triển khai một giao thức truyền tải tin cậy tùy chỉnh trên nền UDP, với nguồn tham khảo từ Google QUIC. Giao thức này cung cấp khả năng quản lý trạng thái kết nối, độ tin cậy dữ liệu và mã hóa payload.
+
+\subsection{Cấu trúc Header Gói tin}
+Mỗi gói tin truyền qua mạng đều được đóng gói kèm một header cố định kích thước 22 byte. Header này được tuần tự hóa theo thứ tự byte mạng Big-Endian để đảm bảo tính tương thích chéo giữa các nền tảng hệ điều hành.
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|l|c|c|l|}
+\hline
+\textbf{Trường (Field)} & \textbf{Kích thước} & \textbf{Kiểu} & \textbf{Mô tả} \\ \hline
+\texttt{msg\_type} & 1 byte & \texttt{uint8} & Xác định loại gói tin (VD: DATA, ACK). \\ \hline
+\texttt{conn\_id} & 4 byte & \texttt{uint32} & Định danh duy nhất cho kết nối logic. \\ \hline
+\texttt{seq\_num} & 4 byte & \texttt{uint32} & Số thứ tự dùng cho quản lý độ tin cậy và truyền lại. \\ \hline
+\texttt{flags} & 1 byte & \texttt{uint8} & Cờ điều khiển dạng bitmask (VD: EOM, ENCRYPTED). \\ \hline
+\texttt{stream\_id} & 2 byte & \texttt{uint16} & Định danh luồng dữ liệu ghép kênh (multiplexed). \\ \hline
+\texttt{offset} & 4 byte & \texttt{uint32} & Vị trí byte (offset) trong luồng để ráp lại dữ liệu. \\ \hline
+\texttt{payload\_len} & 2 byte & \texttt{uint16} & Chiều dài của dữ liệu ứng dụng (payload) đính kèm. \\ \hline
+\texttt{reserved} & 4 byte & \texttt{uint32} & Dự phòng cho tương lai (căn lề cho đủ 22 byte). \\ \hline
+\end{tabular}
+\caption{Bố cục Header 22-byte của Giao thức Tùy chỉnh}
+\label{tab:header_layout}
+\end{table}
+
+\subsection{Các Loại Gói tin}
+Trường \texttt{msg\_type} quyết định luồng xử lý và định tuyến của gói tin. Giao thức định nghĩa các loại thông điệp cốt lõi sau:
+
+\begin{itemize}
+    \item \textbf{\texttt{0x01 PKT\_HELLO}:} Khởi tạo quá trình bắt tay bảo mật (Client gửi Server).
+    \item \textbf{\texttt{0x02 PKT\_HELLO\_ACK}:} Phản hồi quá trình bắt tay (Server phản hồi Client).
+    \item \textbf{\texttt{0x03 PKT\_DATA}:} Chuyên chở dữ liệu ứng dụng (payload).
+    \item \textbf{\texttt{0x04 PKT\_ACK}:} Gói tin xác nhận chọn lọc (Selective Acknowledgment - SACK) báo đã nhận thành công các số thứ tự gói.
+    \item \textbf{\texttt{0x05 PKT\_HEARTBEAT}:} Gói tin ping giữ mạng (keepalive) để duy trì cổng NAT/Firewall.
+    \item \textbf{\texttt{0x06 PKT\_HEARTBEAT\_ACK}:} Phản hồi pong cho gói tin giữ mạng.
+    \item \textbf{\texttt{0x07 PKT\_CLOSE}:} Kích hoạt quá trình đóng kết nối an toàn.
+    \item \textbf{\texttt{0x08 PKT\_AUTH\_REQ} \& \textbf{\texttt{0x09 PKT\_AUTH\_RESP}}:} Trao đổi thông tin xác thực ở tầng ứng dụng.
+\end{itemize}
+
+\subsection{Các Cờ Điều khiển}
+Trường \texttt{flags} sử dụng cơ chế bitmask để báo hiệu các trạng thái cụ thể của gói tin mà không làm tốn thêm dung lượng:
+
+\begin{itemize}
+    \item \textbf{\texttt{0x01 FLAG\_EOM}:} End-of-Message. Đánh dấu đây là mảnh dữ liệu cuối cùng của một thông điệp/file bị phân mảnh.
+    \item \textbf{\texttt{0x02 FLAG\_FIN}:} Kết thúc luồng. Báo hiệu sẽ không có thêm dữ liệu nào được truyền trên luồng này nữa.
+    \item \textbf{\texttt{0x04 FLAG\_SYN}:} Khởi tạo luồng.
+    \item \textbf{\texttt{0x08 FLAG\_ENCRYPTED}:} Khẳng định payload đính kèm đã được bảo vệ bằng thuật toán mã hóa AES-256-GCM.
+\end{itemize}
+
+\subsection{Giới hạn Payload \& Phân mảnh}
+Để giảm thiểu rủi ro bị phân mảnh ở tầng IP và rớt gói tin trên mạng lưới, giao thức áp đặt các ranh giới Kích thước Truyền tải Tối đa nghiêm ngặt:
+
+\begin{itemize}
+    \item \textbf{Tải trọng UDP Tối đa:} $1400 \text{ byte}$.
+    \item \textbf{Chi phí Header:} $22 \text{ byte}$.
+    \item \textbf{Tải trọng Ứng dụng Tối đa:} $1378 \text{ byte}$ trên mỗi gói tin.
+\end{itemize}
+Các khối dữ liệu vượt quá ngưỡng $1378 \text{ byte}$ sẽ được module \texttt{Stream} tự động băm nhỏ ở bên gửi và ráp lại tại đích đến thông qua việc kết hợp tham số \texttt{offset} và cờ \texttt{FLAG\_EOM}.
+
+\subsection{Bảo mật \& Nhận diện (Security \& Identification)}
+\begin{itemize}
+    \item \textbf{Số Ma thuật của Giao thức (Magic Number):} Một chữ ký nhận diện 4-byte (\texttt{0xDEADBEEF}) được định nghĩa để loại bỏ lưu lượng rác mạng hoặc các trình quét cổng (port scanners) một cách nhanh chóng trước khi tiến hành phân tích sâu gói tin.
+    \item \textbf{Mã hóa Payload:} Các gói tin dữ liệu (\texttt{PKT\_DATA}) hỗ trợ mã hóa mạnh mẽ bằng bộ mã hóa chuẩn công nghiệp AES-256-GCM. Quá trình này sử dụng một Khóa phiên dùng chung (Session Key) 32-byte (256-bit), một Nonce 12-byte (96-bit) và một Thẻ xác thực (Authentication Tag) 16-byte (128-bit) để đảm bảo đồng thời tính bảo mật và tính toàn vẹn của dữ liệu.
+\end{itemize}
