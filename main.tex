@@ -29,11 +29,15 @@
 \input{}
 \newpage
 
-\newpage
 
+\nocite{*}
 \renewcommand{\refname}{Tài liệu tham khảo}
-\bibliographystyle{plain} 
-\bibliography{references} 
+\bibliographystyle{IEEEtran} % Hoặc 'plain', 'unsrt' tùy theo chuẩn của trường bạn
+\bibliography{references}
+\addcontentsline{toc}{section}{\refname}
+
+
+
 
 \end{document}
 

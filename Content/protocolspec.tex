@@ -5,10 +5,10 @@
 \subsection{Cấu trúc Header Gói tin}
 Mỗi gói tin truyền qua mạng đều được đóng gói kèm một header cố định kích thước 22 byte. Header này được tuần tự hóa theo thứ tự byte mạng Big-Endian để đảm bảo tính tương thích chéo giữa các nền tảng hệ điều hành.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{|l|c|c|l|}
+\begin{tabular}{|l|c|c|p{0.45\textwidth}|}
 \hline
 \textbf{Trường (Field)} & \textbf{Kích thước} & \textbf{Kiểu} & \textbf{Mô tả} \\ \hline
 \texttt{msg\_type} & 1 byte & \texttt{uint8} & Xác định loại gói tin (VD: DATA, ACK). \\ \hline
@@ -62,4 +62,66 @@ Các khối dữ liệu vượt quá ngưỡng $1378 \text{ byte}$ sẽ được
 \begin{itemize}
     \item \textbf{Số Ma thuật của Giao thức (Magic Number):} Một chữ ký nhận diện 4-byte (\texttt{0xDEADBEEF}) được định nghĩa để loại bỏ lưu lượng rác mạng hoặc các trình quét cổng (port scanners) một cách nhanh chóng trước khi tiến hành phân tích sâu gói tin.
     \item \textbf{Mã hóa Payload:} Các gói tin dữ liệu (\texttt{PKT\_DATA}) hỗ trợ mã hóa mạnh mẽ bằng bộ mã hóa chuẩn công nghiệp AES-256-GCM. Quá trình này sử dụng một Khóa phiên dùng chung (Session Key) 32-byte (256-bit), một Nonce 12-byte (96-bit) và một Thẻ xác thực (Authentication Tag) 16-byte (128-bit) để đảm bảo đồng thời tính bảo mật và tính toàn vẹn của dữ liệu.
+\end{itemize}
+
+
+
+\subsection{Quá trình đóng gói và mở gói tin}
+
+Trong kiến trúc giao thức truyền tải UDP tin cậy, hai hàm \texttt{pack} và \texttt{unpack} đóng vai trò là cửa ngõ giao tiếp giữa các cấu trúc dữ liệu ở tầng ứng dụng và môi trường truyền dẫn vật lý (luồng byte nhị phân thô). Quá trình này đảm bảo mọi thông tin điều khiển và dữ liệu đều được chuyển đổi theo một định dạng cấu trúc đồng nhất theo kiểu Big-Endian.
+
+\subsubsection{Hàm \texttt{pack}}
+\begin{itemize}
+    \item Mục đích: Hàm \texttt{pack} chịu trách nhiệm đóng gói các dữ liệu điều khiển (metadata) và dữ liệu ứng dụng (payload) thành một chuỗi byte (byte sequence) duy nhất, sẵn sàng để gửi qua UDP socket.
+    \item Cơ chế hoạt động và Tác dụng:
+    \begin{itemize}
+        \item Hàm nhận vào các tham số đại diện cho các trường của Header như: loại tin nhắn (\texttt{msg\_type}), định danh kết nối (\texttt{conn\_id}), số thứ tự (\texttt{seq\_num}), các cờ điều khiển (\texttt{flags}), ...
+        \item Tham số \texttt{payload\_len} được tính toán tự động thông qua hàm \texttt{len(payload)}, giúp loại bỏ nguy cơ sai sót do truyền nhầm chiều dài.
+        \item Sử dụng hàm \texttt{struct.pack} của Python với khuôn mẫu định dạng \texttt{\_HEADER\_FMT} để ép kiểu các số nguyên thành một khối nhị phân chính xác 22 byte.
+        \item Cuối cùng, khối Header 22 byte này được nối trực tiếp với mảng byte của phần \texttt{payload} để tạo thành một gói tin hoàn chỉnh (\texttt{header\_bytes + payload}).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Hàm \texttt{unpack}}
+\begin{itemize}
+    \item Mục đích: Hàm \texttt{unpack} thực hiện quá trình giải đóng gói, tiếp nhận luồng byte thô từ tầng mạng và bóc tách chúng ngược lại thành đối tượng cấu trúc \texttt{Header} và khối dữ liệu \texttt{payload} để tầng ứng dụng dễ dàng xử lý.
+    \item Cơ chế hoạt động và Tác dụng:
+    \begin{itemize}
+        \item Kiểm tra an toàn: Bước đầu tiên, hàm kiểm tra độ dài của luồng dữ liệu (\texttt{len(raw\_bytes)}). Nếu chuỗi byte nhỏ hơn ngưỡng tối thiểu \texttt{\_HEADER\_SIZE} (22 byte), hàm sẽ chủ động ném ra ngoại lệ \texttt{ValueError}. 
+        \item Trích xuất Header: Hàm tiến hành cắt đúng 22 byte đầu tiên của luồng mạng (\texttt{raw\_bytes[:\_HEADER\_SIZE]}) và đưa vào \texttt{struct.unpack} để phân rã thành 8 trường dữ liệu độc lập. Các trường này sau đó được bọc vào một đối tượng \texttt{Header} (sử dụng \texttt{NamedTuple}) để việc truy xuất trong mã nguồn được tường minh
+        \item Trích xuất Payload an toàn: Dựa vào thông số \texttt{payload\_len} vừa giải mã được từ Header, hàm sẽ cắt chính xác phần dữ liệu ứng dụng nằm ngay sau Header (\texttt{raw\_bytes[\_HEADER\_SIZE : \_HEADER\_SIZE + header.payload\_len]}). Cách cắt mảng này giúp hệ thống chỉ lấy đúng phần dữ liệu thực tế, tự động loại bỏ các byte rác thừa lọt vào trong quá trình truyền qua mạng
+    \end{itemize}
+\end{itemize}
+
+
+
+\subsection{Quản lý vòng đời Kết nối}
+
+Lớp \texttt{Connection} (nằm trong \texttt{transport/connection.py}) đóng vai trò là lõi trung tâm của giao thức, chịu trách nhiệm nâng cấp một socket UDP không trạng thái thành một kênh truyền thông tin cậy, có trạng thái và bảo mật. Nó điều phối sự tương tác giữa các module mã hóa, quản lý luồng và kiểm soát độ tin cậy
+
+\subsubsection{Cơ chế trao đổi Khóa}
+Mục đích của nhóm hàm bắt tay là thiết lập một kênh truyền thông an toàn mà không để lộ khóa bí mật qua mạng, ngăn chặn các cuộc tấn công nghe lén (Eavesdropping). Quá trình này ứng dụng thuật toán Diffie-Hellman trên đường cong elliptic (X25519).
+
+\begin{itemize}
+    \item Khởi tạo từ Client (\texttt{handle\_handshake}): Hàm này tạo một cặp khóa bất đối xứng cục bộ. Khóa công khai được chuyển thành chuỗi Hex, bọc trong cấu trúc JSON và đóng gói dưới dạng thông điệp \texttt{PKT\_HELLO} để gửi tới Server.
+    \item Tiếp nhận tại Server (\texttt{\_handle\_hello}): Khi nhận được \texttt{PKT\_HELLO}, Server giải mã JSON để lấy Khóa công khai của Client. Server tiếp tục tự sinh một cặp khóa mới và sử dụng khóa bí mật của mình kết hợp với khóa công khai của Client để sinh ra khóa phiên dùng chung (\texttt{\_session\_key}). Cuối cùng, Server gửi trả khóa công khai của chính nó thông qua thông điệp \texttt{PKT\_HELLO\_ACK}.
+    \item Hoàn tất tại Client (\texttt{\_handle\_hello\_ack}): Client nhận Khóa công khai của Server và áp dụng toán học tương tự để tự tính ra \texttt{\_session\_key}. Tại thời điểm này, sự kiện \texttt{handshake\_complete} được kích hoạt (\texttt{.set()}), cho phép dữ liệu ứng dụng bắt đầu được mã hóa AES-256-GCM và truyền đi an toàn.
+\end{itemize}
+
+\subsubsection{Cơ chế chuyển vùng địa chỉ}
+Khác với TCP (dựa trên bộ 4 giá trị Source/Dest IP và Port), giao thức này định danh kết nối qua \texttt{conn\_id}. Điều này cho phép một thiết bị duy trì kết nối ngay cả khi chuyển mạng 
+Hàm \texttt{verify\_migration\_datagram}: Nhằm ngăn chặn các cuộc tấn công giả mạo IP nhằm chiếm quyền điều khiển kết nối, hàm này yêu cầu xác thực nghiêm ngặt. Khi Server nhận thấy có dữ liệu từ một IP/Port lạ mang cùng một \texttt{conn\_id} cũ, nó không chấp nhận ngay. Thay vào đó, nó buộc gói tin này phải là gói \texttt{PKT\_DATA} đã được mã hóa (\texttt{FLAG\_ENCRYPTED}). Nếu hệ thống có thể giải mã thành công gói tin này bằng \texttt{\_session\_key} cũ, chứng tỏ IP lạ này thực chất vẫn là Client hợp lệ đang giữ khóa. Lúc này, Server mới cập nhật địa chỉ \texttt{remote\_addr} mới.
+
+
+\subsubsection{Duy trì nhịp tim và đảm bảo độ tin cậy}
+Mạng lưới trung gian (như NAT/Firewall) thường tự động đóng các cổng UDP nếu không có dữ liệu lưu thông trong một thời gian ngắn. Do đó, kết nối cần được giám sát liên tục.
+
+\begin{itemize}
+    \item Giữ cổng mạng (\texttt{\_send\_heartbeat} \& \texttt{\_send\_heartbeat\_ack}): Các hàm này gửi các gói tin có tải trọng rỗng (\texttt{payload=b""}) qua lại giữa hai đầu cuối. Hoạt động này nhằm mục đích duy trì bảng định tuyến NAT của nhà mạng luôn mở, đồng thời xác nhận đối phương vẫn đang trực tuyến
+    \item Đồng hồ Sinh học (\texttt{tick}): Đây là hàm được kích hoạt định kỳ (khoảng 50ms/lần) bởi vòng lặp sự kiện chính. Hàm thực hiện 3 nhiệm vụ cốt lõi:
+    \begin{enumerate}
+        \item Kiểm soát Timeout: Nếu khoảng thời gian kể từ gói tin cuối cùng nhận được vượt quá \texttt{IDLE\_TIMEOUT} (ví dụ 30 giây), hệ thống kết luận đối phương đã mất mạng hoặc treo ứng dụng, tự động đánh dấu \texttt{closed = True} để giải phóng tài nguyên bộ nhớ.
+        \item Phát nhịp tim: Kích hoạt hàm \texttt{\_send\_heartbeat} nếu đã tới chu kỳ \texttt{HEARTBEAT\_INTERVAL}.
+        \item Truyền lại: Liên kết với module \texttt{ReliabilityManager} để lấy danh sách các gói tin chưa được xác nhận (SACK) đã quá hạn (RTO Timeout). Sau đó, thực hiện gọi \texttt{\_raw\_send} để bắn lại các gói tin này xuống mạng, đảm bảo không một mảnh dữ liệu nào bị thất thoát.
+    \end{enumerate}
 \end{itemize}
