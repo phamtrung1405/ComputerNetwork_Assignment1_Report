@@ -1,0 +1,109 @@
+\setcounter{section}{2}
+\section{Server và Logic Định tuyến}
+
+\subsection{Kiến trúc tổng quát}
+Mô hình Server của hệ thống được xây dựng theo hướng \textbf{single-entry dispatcher} trên giao thức UDP, trong đó tất cả các gói tin từ client đều đi qua một socket UDP duy nhất và được xử lý bởi event loop dựa trên \textit{selectors}. Cấu trúc này cho phép server quản lý đồng thời nhiều phiên làm việc mà không cần mở một socket riêng cho từng client, giúp tiết kiệm tài nguyên và tăng khả năng mở rộng lên hàng chục client cùng lúc.
+
+Ở tầng trung tâm, server giữ ba cấu trúc dữ liệu quan trọng:
+\begin{itemize}
+    \item \texttt{\_sessions}: ánh xạ từ \texttt{conn\_id} sang đối tượng \texttt{Session}, đại diện cho trạng thái của mỗi client.
+    \item \texttt{\_addr\_to\_conn}: ánh xạ từ địa chỉ IP/port của client sang \texttt{conn\_id}, hỗ trợ phát hiện NAT rebinding và cập nhật vị trí client.
+    \item \texttt{\_user\_to\_conn}: ánh xạ từ username sang kết nối đang hoạt động, là cơ sở để thực hiện định tuyến tin nhắn cá nhân.
+\end{itemize}
+
+Mỗi client khi kết nối tới server sẽ được tạo một \texttt{Session} riêng, chứa thông tin xác thực, trạng thái online, và callback để thực hiện broadcast/unicast. Cách tổ chức này đảm bảo rằng lỗi của một client không làm sụp toàn bộ server vì logic xử lý được cô lập theo từng phiên.
+
+\subsection{Event loop non-blocking và xử lý datagram}
+Server khởi tạo socket UDP ở chế độ non-blocking bằng cách gọi:\newline
+\begin{verbatim}
+self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+self._sock.bind((host, port))
+self._sock.setblocking(False)
+self._sel.register(self._sock, selectors.EVENT_READ)
+\end{verbatim}
+
+Sau đó, server chạy vòng lặp chính dựa trên \texttt{selectors.select(timeout=TICK\_INTERVAL)}. Mỗi khi socket sẵn sàng đọc dữ liệu, server gọi hàm \texttt{handle\_datagram(data, addr)} để phân tích packet và chuyển tiếp tới session tương ứng. Cơ chế này cho phép server xử lý đồng thời nhiều sự kiện I/O mà không cần tạo thread cho từng kết nối, nhờ đó hiệu quả hơn so với mô hình blocking socket.
+
+Hàm \texttt{handle\_datagram()} thực hiện những bước chính sau:
+\begin{enumerate}
+    \item Giải mã header để lấy \texttt{conn\_id} và loại tin nhắn.
+    \item Kiểm tra session tương ứng đã tồn tại chưa. Nếu chưa, server tạo một session mới.
+    \item Kiểm tra khả năng \textbf{NAT Rebinding}: nếu client đổi địa chỉ IP/port nhưng gói tin hợp lệ, server cập nhật \texttt{remote\_addr}; nếu không hợp lệ, server từ chối cập nhật.
+    \item Chuyển dữ liệu tới tầng transport bằng \texttt{session.connection.receive\_packet(data)}.
+    \item Nếu nhận được gói đóng kết nối, đánh dấu session bị đóng và chuẩn bị rời khỏi hệ thống.
+\end{enumerate}
+
+\subsection{NAT Rebinding và bảo vệ định tuyến}
+Một vấn đề quan trọng trong môi trường UDP là client có thể di chuyển giữa các mạng hoặc đổi port tạm thời do NAT. Để tránh hacker hoặc client giả mạo đổi hướng routing, server không cập nhật địa chỉ client một cách tùy tiện. Thay vào đó, nó chỉ chấp nhận rebinding khi gói dữ liệu đi kèm được xác thực bởi cơ chế AEAD của tầng transport.
+
+Trong quá trình này, server kiểm tra các điều kiện sau:
+\begin{itemize}
+    \item Địa chỉ cũ và địa chỉ mới phải là cùng một \texttt{conn\_id}.
+    \item Địa chỉ mới không thuộc sở hữu của một client khác đang hoạt động.
+    \item Gói tin gửi đến từ địa chỉ mới phải đi qua xác thực migration datagram hợp lệ.
+\end{itemize}
+
+Nếu điều kiện không thỏa, server ghi log cảnh báo và từ chối thay đổi địa chỉ đến, tránh rò rỉ dữ liệu hay gán sai session. Đây là biện pháp bảo vệ quan trọng nhằm đảm bảo tính toàn vẹn của định tuyến khi có NAT hoặc chuyển mạng.
+
+\subsection{Xác thực người dùng và quản lý online state}
+Ở tầng ứng dụng, mỗi session triển khai hàm \texttt{process\_payload()} để parse JSON từ client. Dữ liệu đầu vào được kiểm tra cực kỳ chặt chẽ:
+\begin{itemize}
+    \item Bắt buộc là JSON object hợp lệ.
+    \item Loại tin nhắn phải nằm trong tập hợp \texttt{AUTH}, \texttt{MSG}, \texttt{FILE}, \texttt{FILE\_DATA}, \texttt{LOGOUT}.
+    \item Nếu chưa đăng nhập mà gửi các tin nhắn không thuộc AUTH, server trả về lỗi \texttt{ERROR}.
+\end{itemize}
+
+Với loại tin nhắn \texttt{AUTH}, hàm \texttt{verify\_auth()} sẽ kiểm tra username và password hash với SQLite. Nếu thành công, session được đánh dấu là \texttt{authenticated = True} và lưu username vào bộ nhớ. Điều này cho phép server xây dựng bảng ánh xạ \texttt{username -> conn\_id} để định tuyến trực tiếp đến user đích.
+
+Việc xác thực được thực hiện dạng "đóng gói" và an toàn vì server:
+\begin{itemize}
+    \item giới hạn độ dài username và mật khẩu hash;
+    \item đảm bảo hash chỉ gồm hex chữ số thập lục phân; 
+    \item ngăn chặn chuyển tài khoản khi session đã authenticated; 
+    \item phát hành thông báo \texttt{AUTH\_RESP} và user join notification cho các client còn lại.
+\end{itemize}
+
+\subsection{Logic định tuyến broadcast và unicast}
+Sau khi user đăng nhập thành công, server đảm nhiệm việc định tuyến tin nhắn đến đúng đích. Hai hàm cốt lõi là \texttt{\_broadcast()} và \texttt{\_unicast()}.
+
+\textbf{Broadcast}: Khi target là \texttt{"all"}, server lặp qua tất cả session đang online, kiểm tra điều kiện xác thực và trạng thái đóng, rồi gửi tin nhắn tới từng client. Vì hàm này loại trừ sender bằng tham số \texttt{exclude}, nên tin nhắn không bị lặp lại cho người gửi. Đây là cơ chế chính để triển khai phòng chat cộng đồng.
+
+\textbf{Unicast}: Khi target là một username cụ thể, server tra cứu trong \texttt{\_user\_to\_conn}. Nếu target online, server ghi dữ liệu trực tiếp vào stream tương ứng. Nếu không online hoặc không tồn tại, hệ thống trả về lỗi và không làm gián đoạn các session khác. Cách thiết kế này đảm bảo dữ liệu chỉ đến đúng recipient, không rò rỉ sang client khác.
+
+Sơ đồ logic định tuyến có thể biểu diễn như sau:
+\begin{equation}
+\text{target} =
+\begin{cases}
+\text{all}, & \text{nếu } msg.target = \text{``all''} \\
+\text{user\_map}[msg.target], & \text{nếu } msg.target \in \text{username}
+\end{cases}
+\end{equation}
+
+Đây chính là cơ chế làm cho hệ thống gửi tin nhắn từ A sang B không bị rò rỉ sang C, đồng thời vẫn hỗ trợ broadcast cho cả phòng chat.
+
+\subsection{Xử lý file và stream dữ liệu}
+Ngoài tin nhắn văn bản, hệ thống còn hỗ trợ truyền file giữa các client. Trong mô hình này, file không được gửi nguyên vẹn như một khối lớn mà được chia thành các chunk theo stream ID đã xác thực. Server xử lý ba loại thông điệp:
+\begin{itemize}
+    \item \texttt{FILE}: bắt đầu/khởi tạo transfer, xác thực filename, size, sha256, stream\_id.
+    \item \texttt{FILE\_DATA}: chứa offset và dữ liệu chunk.
+    \item \texttt{FILE\_READY}: báo nhận metadata và hợp lệ cho file transfer.
+\end{itemize}
+
+Mỗi transfer được theo dõi trong \texttt{\_file\_transfers} với cấu trúc \texttt{(target, expected\_size, received\_size)}. Khi nhận được chunk mới, server kiểm tra:
+\begin{itemize}
+    \item stream\_id có hợp lệ không;
+    \item offset không âm và không vượt quá giới hạn;
+    \item độ dài dữ liệu chunk không quá ngưỡng cho phép;
+    \item tổng kích thước chunk nhận về không vượt quá kích thước file khai báo.
+\end{itemize}
+
+Nếu bất kỳ điều kiện nào sai, server sẽ từ chối chunk và ghi log cảnh báo. Cơ chế này bảo vệ server khỏi tấn công bằng dữ liệu bất thường, đồng thời đảm bảo file đến đúng đích trong thời gian hợp lệ.
+
+\subsection{Tính sẵn sàng và tự xử lý lỗi}
+Server không chỉ nhận dữ liệu mà còn duy trì vòng lặp tick nền chạy định kỳ bằng \texttt{\_tick\_loop()}. Trong mỗi chu kỳ, server gọi \texttt{session.connection.tick()} để xử lý keepalive, đảm bảo socket hoạt động ổn định, và phát hiện connection đã đóng hoặc timeout. Nếu một client sập hoặc bị ngắt, session liên quan được xóa sạch khỏi \texttt{\_sessions}, mapping user tương ứng bị xoá, và toàn bộ người còn lại được cập nhật danh sách online mới bằng thông báo \texttt{USER\_LIST}.
+
+Với cách thiết kế này, một client lỗi không làm crash server. Chỉ session đó bị đóng, các session khác vẫn hoạt động bình thường. Đây là nguyên tắc quan trọng trong hệ thống phân tán có số lượng client đồng thời từ 10 đến 20 và cần đảm bảo độ tin cậy tốt trong môi trường UDP.
+
+\subsection{Kết luận}
+Server của Assignment 1 được thiết kế theo mô hình event-driven, non-blocking UDP với session-based routing. Kiến trúc này cho phép hệ thống xử lý nhiều client đồng thời, xác thực an toàn, định tuyến chat/broadcast/file theo đúng người nhận, và tự động xử lý các trường hợp NAT rebinding, client mất kết nối, hoặc dữ liệu sai định dạng. Chính vì vậy, server không chỉ đáp ứng yêu cầu kỹ thuật của bài toán mà còn thể hiện được tính tận dụng tốt của I/O multiplexing, thread safety và logic định tuyến phân tán thực tế.
