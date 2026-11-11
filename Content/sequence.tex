@@ -1,0 +1,82 @@
+\section{Sơ đồ Tuần tự (Sequence Diagram)}
+
+Mục này mô tả vòng đời của (1) phiên kết nối, (2) một tin nhắn chat và (3) một lần truyền file. Các sơ đồ dùng ba đối tượng: \textbf{Client A} (người gửi), \textbf{Server} và \textbf{Client B} (người nhận).
+
+% ---- helpers cho sơ đồ tuần tự ----
+\newcommand{\seqlife}[3]{%  x, tên, chiều cao
+  \node[draw, fill=gray!15, minimum width=2.4cm, font=\small\bfseries] at (#1,0) {#2};
+  \draw[dashed, gray] (#1,-0.35) -- (#1,-#3);}
+\newcommand{\seqmsg}[5]{%  x1, x2, y, nhãn, kiểu
+  \draw[#5, ->, >=stealth] (#1,-#3) -- node[above, font=\scriptsize, align=center]{#4} (#2,-#3);}
+\newcommand{\seqnote}[4]{%  x, y, rộng, nội dung
+  \node[draw, fill=yellow!20, font=\scriptsize, text width=#3, align=center, inner sep=2pt] at (#1,-#2) {#4};}
+
+\subsection{Bắt tay và xác thực}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\seqlife{0}{Client}{9.2}
+\seqlife{8}{Server}{9.2}
+\seqmsg{0}{8}{1.1}{\texttt{HELLO} (client\_pub, \texttt{conn\_id}) -- rõ}{thick}
+\seqnote{8}{1.9}{3.2cm}{Tạo \texttt{Session}; sinh khóa; X25519 + HKDF}
+\seqmsg{8}{0}{2.9}{\texttt{HELLO\_ACK} (server\_pub) -- rõ}{thick}
+\seqnote{0}{3.7}{3.2cm}{X25519 + HKDF $\Rightarrow$ khóa hai chiều}
+\seqmsg{0}{8}{4.7}{\texttt{DATA} s0: \texttt{AUTH} (user, hash) -- mã hóa}{thick}
+\seqnote{8}{5.5}{3.2cm}{\texttt{verify\_user} (SQLite)}
+\seqmsg{8}{0}{6.5}{\texttt{DATA} s0: \texttt{AUTH\_RESP} success}{thick}
+\seqmsg{8}{0}{7.5}{\texttt{USER\_LIST} (broadcast người online)}{thick}
+\seqmsg{0}{8}{8.5}{\texttt{ACK} (SACK) cho mỗi \texttt{DATA}}{dashed}
+\end{tikzpicture}
+\caption{Bắt tay X25519 và đăng nhập. Nếu \texttt{HELLO\_ACK} mất, client gửi lại \texttt{HELLO} (tối đa 5 lần, mỗi 1~s); server phát lại \texttt{HELLO\_ACK} đã lưu.}
+\label{fig:seq_handshake}
+\end{figure}
+
+\subsection{Vòng đời một tin nhắn chat}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\seqlife{0}{Client A}{10.4}
+\seqlife{5.5}{Server}{10.4}
+\seqlife{11}{Client B}{10.4}
+\seqnote{0}{1.0}{3.0cm}{\texttt{send\_chat}: JSON \texttt{MSG}\\(target, text)}
+\seqmsg{0}{5.5}{2.0}{\texttt{DATA} s0 (AES-GCM, seq $n$)}{thick}
+\seqmsg{5.5}{0}{2.7}{\texttt{ACK} (SACK $n$)}{dashed}
+\seqnote{5.5}{3.7}{3.4cm}{Giải mã, ghép chunk (\texttt{EOM}); \texttt{Session}: kiểm tra; gắn \texttt{from}, \texttt{timestamp}}
+\seqnote{5.5}{5.1}{3.4cm}{\texttt{target = all}: broadcast mọi session (trừ người gửi)\\hoặc \texttt{target = user}: tra \texttt{\_user\_to\_conn}}
+\seqmsg{5.5}{11}{6.1}{\texttt{DATA} s0 (mã hóa bằng khóa của B)}{thick}
+\seqmsg{11}{5.5}{6.8}{\texttt{ACK} (SACK)}{dashed}
+\seqnote{11}{7.6}{3.0cm}{Giải mã, parse JSON, đẩy SSE tới trình duyệt}
+\seqmsg{5.5}{11}{8.6}{\texttt{DATA} (gói mất): RTO / fast retransmit}{red!70!black, dashed}
+\seqmsg{5.5}{0}{9.5}{\texttt{ERROR} nếu user offline/không tồn tại}{dotted}
+\end{tikzpicture}
+\caption{Vòng đời của một tin nhắn: mã hóa $\rightarrow$ ACK $\rightarrow$ định tuyến $\rightarrow$ mã hóa lại cho người nhận $\rightarrow$ hiển thị. Gói bị mất được truyền lại bởi \texttt{tick()}.}
+\label{fig:seq_message}
+\end{figure}
+
+\subsection{Vòng đời một lần truyền file}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\seqlife{0}{Client A}{11.2}
+\seqlife{5.5}{Server}{11.2}
+\seqlife{11}{Client B}{11.2}
+\seqnote{0}{0.95}{3.0cm}{Tính SHA-256; \texttt{allocate\_stream()} $\Rightarrow$ stream lẻ $N$}
+\seqmsg{0}{5.5}{1.9}{\texttt{FILE} (name, size, sha256, $N$, target)}{thick}
+\seqnote{5.5}{2.8}{3.2cm}{Kiểm tra tên, kích thước, $N$; lưu \texttt{\_file\_transfers}}
+\seqmsg{5.5}{11}{3.8}{\texttt{FILE\_READY} (metadata)}{thick}
+\seqmsg{0}{5.5}{4.9}{\texttt{DATA} s$N$ chunk 1 (offset 0, 1362 B)}{thick}
+\seqmsg{5.5}{11}{5.6}{chuyển tiếp chunk 1 trên s$N$ (seq riêng)}{thick}
+\seqmsg{0}{5.5}{6.3}{\texttt{DATA} s$N$ chunk 2 \ldots}{thick}
+\seqmsg{5.5}{11}{7.0}{chuyển tiếp chunk 2 \ldots}{thick}
+\seqmsg{11}{5.5}{7.7}{\texttt{ACK} (SACK) từng chặng}{dashed}
+\seqnote{0}{8.5}{3.0cm}{\texttt{can\_send()} (cwnd CUBIC) chặn khi cửa sổ đầy}
+\seqmsg{0}{5.5}{9.4}{chunk cuối: \texttt{FLAG\_EOM} | \texttt{FIN}}{thick}
+\seqmsg{5.5}{11}{10.1}{chuyển tiếp chunk cuối}{thick}
+\seqnote{11}{10.85}{3.0cm}{Ghép theo \texttt{offset}; so sánh SHA-256}
+\end{tikzpicture}
+\caption{Vòng đời truyền file: metadata trên stream 0, dữ liệu trên stream riêng $N$; mỗi chặng (A$\to$Server, Server$\to$B) có \texttt{seq}, ACK và cửa sổ tắc nghẽn độc lập.}
+\label{fig:seq_file}
+\end{figure}

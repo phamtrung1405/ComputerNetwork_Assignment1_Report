@@ -1,0 +1,23 @@
+\section{Thách thức \& Giải pháp}
+
+UDP không đảm bảo thứ tự, độ tin cậy hay kiểm soát tắc nghẽn, nên mọi vấn đề này phải được giải quyết ở tầng ứng dụng. Các thách thức chính và cách xử lý:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Phân mảnh gói tin.} Datagram lớn hơn MTU bị phân mảnh ở tầng IP; mất một mảnh là mất cả datagram. \emph{Giải pháp}: giới hạn UDP payload 1400 byte, trừ header 22 byte và thẻ GCM 16 byte nên mỗi gói mang tối đa \textbf{1362 byte} dữ liệu. \texttt{Stream} tự cắt dữ liệu lớn thành chunk, gắn \texttt{offset}, chunk cuối mang \texttt{FLAG\_EOM}; bên nhận ghép lại theo \texttt{offset} (chịu được đảo thứ tự) với giới hạn bộ đệm 16~MB để chống cạn bộ nhớ.
+
+    \item \textbf{Mất gói và đảo thứ tự.} \emph{Giải pháp}: ACK chọn lọc (SACK) cho mỗi gói \texttt{DATA}; RTO tính theo RTT (RFC~6298, kẹp 0,2--10~s); fast retransmit khi có $\ge 3$ gói số cao hơn đã được ACK; tối đa 8 lần truyền lại. Chỉ gửi ACK \emph{sau khi} giải mã thành công để gói giả mạo không làm sai trạng thái.
+
+    \item \textbf{Tắc nghẽn và tràn bộ đệm.} Gửi file bằng tốc độ tối đa làm mất gói hàng loạt. \emph{Giải pháp}: cửa sổ tắc nghẽn CUBIC ($C=0{,}4$, $\beta=0{,}7$, cwnd khởi đầu 10 gói); hàm \texttt{can\_send()} điều tiết hàng đợi gửi.
+
+    \item \textbf{Deadlock giữa luồng nhận và luồng gửi.} Server dùng một luồng cho cả nhận và gửi; nếu hàm gửi \emph{chặn chờ} cửa sổ tắc nghẽn mở, thì luồng đó không thể xử lý ACK để mở cửa sổ $\Rightarrow$ treo vĩnh viễn. \emph{Giải pháp}: \texttt{\_flush\_send\_queue()} \textbf{không bao giờ chặn}: dữ liệu vào hàng đợi \texttt{\_tx\_queue}, được xả khi (i) vừa enqueue, (ii) vừa xử lý ACK, (iii) mỗi \texttt{tick()}. Ngoài ra dùng \texttt{RLock} cho khóa gửi (cho phép gọi lồng nhau) và tách khóa riêng cho số thứ tự và bảng stream, không bao giờ giữ hai khóa theo thứ tự đảo.
+
+    \item \textbf{Mất gói bắt tay.} \texttt{HELLO}/\texttt{HELLO\_ACK} không có ACK riêng. \emph{Giải pháp}: client gửi lại \texttt{HELLO} mỗi 1~s (tối đa 5 lần), server lưu \texttt{HELLO\_ACK} và phát lại khi nhận \texttt{HELLO} trùng.
+
+    \item \textbf{Đổi địa chỉ/cổng (NAT rebinding) và giả mạo.} Định danh theo \texttt{conn\_id} cho phép đổi mạng, nhưng kẻ tấn công có thể giả IP. \emph{Giải pháp}: chỉ cập nhật địa chỉ khi datagram từ địa chỉ mới là \texttt{DATA} mã hóa giải mã được bằng khóa phiên cũ (\texttt{verify\_migration\_datagram}).
+
+    \item \textbf{Tái sử dụng nonce AES-GCM.} Dùng lại nonce phá vỡ an toàn của GCM. \emph{Giải pháp}: khóa riêng cho từng chiều, nonce dựng từ \texttt{seq\_num}, kèm bộ kiểm tra nonce đã dùng; header được ràng buộc làm AAD nên sửa header sẽ làm giải mã thất bại.
+
+    \item \textbf{Kết nối ``chết'' sau NAT/firewall.} \emph{Giải pháp}: heartbeat 5~s; sau 30~s không nhận gì thì đóng phiên và giải phóng tài nguyên, thông báo lại danh sách người dùng.
+\end{enumerate}
+
+\textbf{Bài học.} Việc tách rõ các tầng (gói tin $\rightarrow$ độ tin cậy $\rightarrow$ stream $\rightarrow$ ứng dụng) giúp kiểm thử từng phần bằng các bộ test riêng (\texttt{tests/}) và tránh các lỗi đồng bộ khó phát hiện.

@@ -1,0 +1,83 @@
+\section{Kiến trúc Hệ thống}
+
+\subsection{Tổng quan}
+StreamChat là ứng dụng cộng tác Client--Server phân tán, hỗ trợ chat thời gian thực (broadcast và tin nhắn riêng) và truyền file. Toàn bộ dữ liệu đi qua một \textbf{giao thức truyền tải tin cậy tự thiết kế trên nền UDP} (Selective ACK, kiểm soát tắc nghẽn CUBIC, trao đổi khóa X25519, mã hóa AES-256-GCM). Hệ thống gồm hai thành phần:
+\begin{itemize}
+    \item \textbf{Server trung tâm} (\texttt{run\_server.py}): một socket UDP duy nhất (mặc định \texttt{127.0.0.1:9000}), xử lý bằng vòng lặp non-blocking \texttt{selectors}; mỗi client được quản lý bởi một \texttt{Session} riêng (xác thực, định tuyến tin nhắn và file).
+    \item \textbf{Client} (\texttt{run\_client.py}): mỗi người dùng chạy một tiến trình gồm \texttt{ChatClient} (nói chuyện với server bằng giao thức UDP tùy chỉnh) và một máy chủ HTTP cục bộ (\texttt{http\_ui.py}, cổng 8080, 8081, \ldots) phục vụ giao diện web và đẩy sự kiện thời gian thực tới trình duyệt bằng Server-Sent Events (SSE).
+\end{itemize}
+
+\subsection{Sơ đồ kiến trúc tổng quát}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners=2pt, minimum height=0.8cm, align=center, font=\scriptsize, fill=white},
+    grp/.style={draw, dashed, rounded corners=4pt, inner sep=6pt},
+    arr/.style={->, >=stealth, thick}
+]
+% Client machine
+\node[box, fill=blue!8, minimum width=3.0cm] (br) at (0,4.4) {Trình duyệt\\(HTML/JS)};
+\node[box, fill=blue!8, minimum width=3.0cm] (ui) at (0,2.9) {\texttt{http\_ui.py}\\HTTP + SSE};
+\node[box, fill=blue!8, minimum width=3.0cm] (cl) at (0,1.4) {\texttt{client.py}\\\texttt{ChatClient}};
+\node[box, fill=green!10, minimum width=3.0cm] (cc) at (0,-0.1) {\texttt{Connection}\\(transport, client)};
+\begin{scope}[on background layer]
+\node[grp, fit=(br)(ui)(cl)(cc), label={[font=\scriptsize\bfseries]above:Máy Client (mỗi người dùng một tiến trình)}] (clientbox) {};
+\end{scope}
+\draw[arr] (br) -- node[right, font=\tiny]{REST/SSE} (ui);
+\draw[arr] (ui) -- (cl);
+\draw[arr] (cl) -- (cc);
+
+% Server machine
+\node[box, fill=orange!12, minimum width=3.0cm] (sv) at (8.6,4.4) {\texttt{server.py}\\\texttt{ChatServer} (selectors)};
+\node[box, fill=orange!12, minimum width=3.0cm] (ss) at (8.6,2.9) {\texttt{session.py}\\\texttt{Session} / \texttt{conn\_id}};
+\node[box, fill=orange!12, minimum width=1.4cm] (db) at (10.2,1.4) {SQLite\\\texttt{users.db}};
+\node[box, fill=green!10, minimum width=3.0cm] (sc) at (7.7,0.1) {\texttt{Connection}\\(transport, server)};
+\begin{scope}[on background layer]
+\node[grp, fit=(sv)(ss)(db)(sc), label={[font=\scriptsize\bfseries]above:Máy Server}] (serverbox) {};
+\end{scope}
+\draw[arr] (sv) -- (ss);
+\draw[arr] (ss) -- (sc);
+\draw[arr] (ss) -- (db);
+
+% Network link
+\draw[<->, >=stealth, very thick, red!70!black] (cc.east) -- node[above, font=\tiny, sloped]{UDP datagram} node[below, font=\tiny, sloped]{header 22 B + AES-256-GCM} (sc.west);
+\end{tikzpicture}
+\caption{Kiến trúc tổng quát: Client giao tiếp với Server qua UDP; trình duyệt chỉ nói chuyện với tiến trình client cục bộ.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Phân tầng bên trong \texttt{Connection}}
+Cùng một lớp \texttt{Connection} được dùng ở cả hai phía (cờ \texttt{is\_server} chọn vai trò). Các tầng được xếp chồng như sau:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|l|l|p{0.5\textwidth}|}
+\hline
+\textbf{Tầng} & \textbf{Tệp} & \textbf{Trách nhiệm} \\ \hline
+Ứng dụng & \texttt{client.py}, \texttt{session.py} & Thông điệp JSON (\texttt{AUTH}, \texttt{MSG}, \texttt{FILE}, \ldots), các chunk file. \\ \hline
+Stream & \texttt{transport/stream.py} & Cắt dữ liệu thành chunk, ghép lại theo \texttt{offset}, giới hạn bộ đệm 16~MB. \\ \hline
+Kết nối & \texttt{transport/connection.py} & Bắt tay, cấp số thứ tự, mã hóa/giải mã, ACK, heartbeat, hàng đợi gửi. \\ \hline
+Tin cậy & \texttt{transport/reliability.py} & SACK, RTO (RFC~6298), CUBIC, \texttt{can\_send()}. \\ \hline
+Mật mã & \texttt{common/crypto.py} & X25519, HKDF, AES-256-GCM (header làm AAD). \\ \hline
+Gói tin & \texttt{common/packet.py} & \texttt{pack}/\texttt{unpack} header 22 byte. \\ \hline
+\end{tabular}
+\caption{Các tầng của giao thức truyền tải tùy chỉnh}
+\end{table}
+
+\subsection{Phân luồng (Stream Multiplexing)}
+Một kết nối UDP chứa nhiều luồng logic nhờ trường \texttt{stream\_id}:
+\begin{itemize}
+    \item \textbf{Stream 0}: điều khiển và chat (JSON UTF-8: \texttt{AUTH}, \texttt{MSG}, \texttt{FILE}, \texttt{LOGOUT}, \ldots).
+    \item \textbf{Stream lẻ} (1, 3, 5, \ldots): do client cấp cho mỗi file gửi đi; \textbf{stream chẵn}: do server cấp. Mỗi file có stream riêng nên file lớn không chặn tin nhắn chat trên stream 0.
+\end{itemize}
+
+\subsection{Luồng tương tác Client--Server}
+\begin{enumerate}
+    \item \textbf{Kết nối}: client sinh \texttt{conn\_id} ngẫu nhiên, gửi \texttt{HELLO} (khóa công khai X25519). Server tạo \texttt{Session}, trả \texttt{HELLO\_ACK}. Hai bên dẫn xuất khóa phiên theo từng chiều bằng HKDF.
+    \item \textbf{Xác thực}: client gửi \texttt{AUTH} (username, SHA-256 password) trên stream 0, đã mã hóa. Server kiểm tra SQLite, ánh xạ \texttt{username $\rightarrow$ conn\_id} và phát danh sách người dùng online.
+    \item \textbf{Chat}: server gắn \texttt{from} và \texttt{timestamp} từ phiên đã xác thực (client không thể giả mạo người gửi) rồi broadcast hoặc unicast.
+    \item \textbf{File}: client gửi metadata \texttt{FILE}, sau đó gửi byte file trên stream riêng; server chuyển tiếp từng chunk sang cùng \texttt{stream\_id} của người nhận; người nhận kiểm tra SHA-256.
+    \item \textbf{Duy trì}: heartbeat mỗi 5~s, đóng kết nối nếu im lặng quá 30~s; \texttt{tick()} chạy mỗi 50~ms để truyền lại gói quá hạn.
+\end{enumerate}

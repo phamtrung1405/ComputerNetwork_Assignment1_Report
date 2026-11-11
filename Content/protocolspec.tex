@@ -54,9 +54,10 @@ Trường \texttt{flags} sử dụng cơ chế bitmask để báo hiệu các tr
 \begin{itemize}
     \item \textbf{Tải trọng UDP Tối đa:} $1400 \text{ byte}$.
     \item \textbf{Chi phí Header:} $22 \text{ byte}$.
-    \item \textbf{Tải trọng Ứng dụng Tối đa:} $1378 \text{ byte}$ trên mỗi gói tin.
+    \item \textbf{Thẻ xác thực AES-GCM:} $16 \text{ byte}$.
+    \item \textbf{Tải trọng Ứng dụng Tối đa:} $1400-22-16=1362 \text{ byte}$ trên mỗi gói tin.
 \end{itemize}
-Các khối dữ liệu vượt quá ngưỡng $1378 \text{ byte}$ sẽ được module \texttt{Stream} tự động băm nhỏ ở bên gửi và ráp lại tại đích đến thông qua việc kết hợp tham số \texttt{offset} và cờ \texttt{FLAG\_EOM}.
+Các khối dữ liệu vượt quá ngưỡng $1362 \text{ byte}$ sẽ được module \texttt{Stream} tự động băm nhỏ ở bên gửi và ráp lại tại đích đến thông qua việc kết hợp tham số \texttt{offset} và cờ \texttt{FLAG\_EOM}.
 
 \subsection{Bảo mật \& Nhận diện (Security \& Identification)}
 \begin{itemize}
