@@ -61,8 +61,8 @@ Các khối dữ liệu vượt quá ngưỡng $1362 \text{ byte}$ sẽ được
 
 \subsection{Bảo mật \& Nhận diện (Security \& Identification)}
 \begin{itemize}
-    \item \textbf{Số Ma thuật của Giao thức (Magic Number):} Một chữ ký nhận diện 4-byte (\texttt{0xDEADBEEF}) được định nghĩa để loại bỏ lưu lượng rác mạng hoặc các trình quét cổng (port scanners) một cách nhanh chóng trước khi tiến hành phân tích sâu gói tin.
-    \item \textbf{Mã hóa Payload:} Các gói tin dữ liệu (\texttt{PKT\_DATA}) hỗ trợ mã hóa mạnh mẽ bằng bộ mã hóa chuẩn công nghiệp AES-256-GCM. Quá trình này sử dụng một Khóa phiên dùng chung (Session Key) 32-byte (256-bit), một Nonce 12-byte (96-bit) và một Thẻ xác thực (Authentication Tag) 16-byte (128-bit) để đảm bảo đồng thời tính bảo mật và tính toàn vẹn của dữ liệu.
+    \item \textbf{Magic number:} Hằng \texttt{PROTOCOL\_MAGIC} (\texttt{0xDEADBEEF}) hiện chỉ được khai báo trong mã nguồn; \texttt{packet.pack}/\texttt{packet.unpack} không thêm hoặc kiểm tra giá trị này. Vì vậy, magic number không thuộc định dạng gói tin trên dây.
+    \item \textbf{Mã hóa Payload:} Các gói \texttt{PKT\_DATA} sau handshake được mã hóa bằng AES-256-GCM. Mỗi chiều truyền dùng khóa ghi riêng 32-byte; nonce 12-byte được dẫn xuất từ số thứ tự gói và vai trò bên gửi. Header 22-byte được xác thực làm AAD, còn thẻ xác thực dài 16-byte được gắn vào ciphertext. Handshake trao đổi khóa X25519 chưa xác thực danh tính server, nên mã hóa payload không đồng nghĩa với chống giả mạo server.
 \end{itemize}
 
 
@@ -90,7 +90,7 @@ Trong kiến trúc giao thức truyền tải UDP tin cậy, hai hàm \texttt{pa
     \begin{itemize}
         \item Kiểm tra an toàn: Bước đầu tiên, hàm kiểm tra độ dài của luồng dữ liệu (\texttt{len(raw\_bytes)}). Nếu chuỗi byte nhỏ hơn ngưỡng tối thiểu \texttt{\_HEADER\_SIZE} (22 byte), hàm sẽ chủ động ném ra ngoại lệ \texttt{ValueError}. 
         \item Trích xuất Header: Hàm tiến hành cắt đúng 22 byte đầu tiên của luồng mạng (\texttt{raw\_bytes[:\_HEADER\_SIZE]}) và đưa vào \texttt{struct.unpack} để phân rã thành 8 trường dữ liệu độc lập. Các trường này sau đó được bọc vào một đối tượng \texttt{Header} (sử dụng \texttt{NamedTuple}) để việc truy xuất trong mã nguồn được tường minh
-        \item Trích xuất Payload an toàn: Dựa vào thông số \texttt{payload\_len} vừa giải mã được từ Header, hàm sẽ cắt chính xác phần dữ liệu ứng dụng nằm ngay sau Header (\texttt{raw\_bytes[\_HEADER\_SIZE : \_HEADER\_SIZE + header.payload\_len]}). Cách cắt mảng này giúp hệ thống chỉ lấy đúng phần dữ liệu thực tế, tự động loại bỏ các byte rác thừa lọt vào trong quá trình truyền qua mạng
+        \item Trích xuất Payload: Hàm cắt tối đa \texttt{payload\_len} byte ngay sau header. Hiện tại hàm chỉ kiểm tra datagram có đủ 22 byte header; chưa từ chối riêng trường hợp payload bị thiếu hoặc có byte dư so với \texttt{payload\_len}.
     \end{itemize}
 \end{itemize}
 
@@ -104,9 +104,9 @@ Lớp \texttt{Connection} (nằm trong \texttt{transport/connection.py}) đóng 
 Mục đích của nhóm hàm bắt tay là thiết lập một kênh truyền thông an toàn mà không để lộ khóa bí mật qua mạng, ngăn chặn các cuộc tấn công nghe lén (Eavesdropping). Quá trình này ứng dụng thuật toán Diffie-Hellman trên đường cong elliptic (X25519).
 
 \begin{itemize}
-    \item Khởi tạo từ Client (\texttt{handle\_handshake}): Hàm này tạo một cặp khóa bất đối xứng cục bộ. Khóa công khai được chuyển thành chuỗi Hex, bọc trong cấu trúc JSON và đóng gói dưới dạng thông điệp \texttt{PKT\_HELLO} để gửi tới Server.
-    \item Tiếp nhận tại Server (\texttt{\_handle\_hello}): Khi nhận được \texttt{PKT\_HELLO}, Server giải mã JSON để lấy Khóa công khai của Client. Server tiếp tục tự sinh một cặp khóa mới và sử dụng khóa bí mật của mình kết hợp với khóa công khai của Client để sinh ra khóa phiên dùng chung (\texttt{\_session\_key}). Cuối cùng, Server gửi trả khóa công khai của chính nó thông qua thông điệp \texttt{PKT\_HELLO\_ACK}.
-    \item Hoàn tất tại Client (\texttt{\_handle\_hello\_ack}): Client nhận Khóa công khai của Server và áp dụng toán học tương tự để tự tính ra \texttt{\_session\_key}. Tại thời điểm này, sự kiện \texttt{handshake\_complete} được kích hoạt (\texttt{.set()}), cho phép dữ liệu ứng dụng bắt đầu được mã hóa AES-256-GCM và truyền đi an toàn.
+    \item Khởi tạo từ Client (\texttt{handle\_handshake}): Client tạo cặp khóa X25519 và gửi public key trong \texttt{PKT\_HELLO}.
+    \item Tiếp nhận tại Server (\texttt{\_handle\_hello}): Server nhận public key, tạo cặp khóa X25519 của mình, dẫn xuất khóa ghi riêng cho client và server, rồi gửi public key trong \texttt{PKT\_HELLO\_ACK}.
+    \item Hoàn tất tại Client (\texttt{\_handle\_hello\_ack}): Client dẫn xuất cùng hai khóa theo vai trò, đặt khóa gửi/nhận tương ứng và bật \texttt{handshake\_complete}. Public key trong handshake chưa được ký hoặc xác minh bằng danh tính server; do đó handshake tạo khóa mã hóa nhưng chưa xác thực được server.
 \end{itemize}
 
 \subsubsection{Cơ chế chuyển vùng địa chỉ}
