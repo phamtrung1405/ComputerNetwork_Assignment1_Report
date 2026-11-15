@@ -154,7 +154,7 @@ AC-11 & Internet \texttt{203.162.10.3} & Web Server \texttt{10.10.50.10}, DMZ VL
 AC-12--13 & Internet & LAN/Server Farm và vùng quản trị Firewall & Từ chối; chặn cổng quản trị 22/443 & Không công bố LAN hoặc giao diện quản trị. \\ \hline
 AC-14 & Máy quản trị VLAN 90 tại cả ba cơ sở & Thiết bị mạng được duyệt & SSH TCP/22 & Báo cáo xác định Jump Host Main \texttt{10.10.90.30}; không nêu host quản trị chi nhánh. \\ \hline
 AC-15--16 & Camera VLAN 70 tại các cơ sở & NVR/Internet & Cổng NVR chưa nêu; chặn Internet theo đề xuất & Báo cáo không cung cấp kiểm thử camera/NVR; cần xác nhận luồng thực tế. \\ \hline
-AC-17--18 & Router WAN ngang hàng & Router WAN ngang hàng & OSPF, IP protocol 89; IPsec chưa cấu hình & OSPF chạy trên các liên kết WAN mô phỏng; không ghi nhận đường hầm IPsec. \\ \hline
+AC-17--18 & Router WAN ngang hàng & Router WAN ngang hàng & OSPF, IP protocol 89; IPsec site-to-site & Ảnh kiểm thử ghi nhận SA IPsec hoạt động trên các peer WAN; phạm vi lưu lượng được xác nhận còn giới hạn theo bằng chứng. \\ \hline
 AC-19 & Staff/Server tại cơ sở nguồn & Ứng dụng tại cơ sở khác & Cổng nghiệp vụ chưa xác định & Chỉ mở sau khi chốt máy chủ, cổng và nhu cầu liên cơ sở. \\ \hline
 AC-20 & Mạng nội bộ Main & Internet qua ASA2/ISP1 & Dynamic PAT; Web DMZ Static NAT & Đây là cơ chế được mô tả trong báo cáo; chi nhánh có tuyến ISP2 dự phòng khi leased line lỗi. \\ \hline
 AC-21--23 & Mọi vùng hoặc DMZ & Vùng/Internet chưa có ngoại lệ cho phép & Từ chối mặc định & Chặn luồng liên vùng, DMZ khởi tạo vào nội bộ và lưu lượng ra Internet chưa duyệt; ghi nhật ký có chọn lọc. \\ \hline
@@ -163,7 +163,7 @@ AC-24 & Medical VLAN 30 tại các cơ sở & Dịch vụ lâm sàng được du
 \end{small}
 
 \subsection{Hướng dẫn triển khai ACL, Firewall, NAT/PAT và VPN}
-Tài liệu \texttt{acl\_implementation\_guide.md} cần phân biệt cấu hình mô phỏng đã trình bày trong báo cáo với các khuyến nghị tăng cường. Cấu hình hiện có dùng ASA1/ASA2, Core SVI/ACL, các router WAN và các VLAN/subnet ở trên; IPsec, VPN người dùng từ xa và dịch vụ NVR chưa được mô tả là đã triển khai.
+Tài liệu \texttt{acl\_implementation\_guide.md} cần phân biệt cấu hình mô phỏng đã trình bày trong báo cáo với các khuyến nghị tăng cường. Các ảnh trong thư mục testcase cho thấy có kiểm thử IPsec site-to-site và VPN người dùng từ xa; không có bằng chứng về dịch vụ NVR hoặc mức độ bảo vệ VPN trong môi trường thực tế.
 
 \begin{enumerate}
     \item \textbf{Xác nhận trước cấu hình:} Dùng sơ đồ thiết bị, SVI/subinterface và địa chỉ ở phần topology cuối của báo cáo; xác nhận thêm các đích dịch vụ chưa nêu, quyền của chủ hệ thống và phương án hoàn nguyên trước mọi thay đổi.
@@ -171,51 +171,104 @@ Tài liệu \texttt{acl\_implementation\_guide.md} cần phân biệt cấu hìn
     \item \textbf{Mạng Wi-Fi khách:} ACL trong báo cáo đã được chỉnh để cho phép DHCP, DNS tới \texttt{10.10.40.10}, chặn đích thuộc \texttt{10.0.0.0/8}, rồi chỉ cho TCP/80 và TCP/443 ra ngoài; các cổng khác bị từ chối ngầm. Vì Web DMZ \texttt{10.10.50.10} thuộc \texttt{10.0.0.0/8}, Guest phải bị chặn khi truy cập DMZ. Cần áp dụng ACL đã chỉnh vào mô phỏng và chạy lại kiểm thử trước khi ghi nhận PASS.
     \item \textbf{DMZ/Internet:} Báo cáo ánh xạ Static NAT từ \texttt{203.162.10.3} tới Web Server \texttt{10.10.50.10} và mở TCP/80. Không mô tả HTTPS/443 là đã triển khai. Chặn truy cập Internet tới LAN và vùng quản trị; chỉ mở luồng DMZ khởi tạo vào nội bộ khi có dependency được duyệt.
     \item \textbf{NAT/PAT:} ASA2 thực hiện Static NAT cho Web Server và Dynamic PAT cho truy cập Internet qua ISP1 tại Main. ISP2-R cung cấp tuyến dự phòng cho các chi nhánh khi leased line lỗi. Không ghi rằng mọi Internet của chi nhánh đi qua Main; cấu hình NAT cụ thể trên tuyến ISP2 cần kiểm tra trong running-config.
-    \item \textbf{OSPF/IPsec:} OSPF được mô phỏng trên các liên kết Carrier-R; cho phép IP protocol 89 giữa đúng router ngang hàng, không dùng TCP/UDP port 89. Báo cáo không ghi nhận cấu hình IPsec; IKE UDP/500, NAT-T UDP/4500 và ESP IP protocol 50 chỉ là yêu cầu nếu sau này bổ sung VPN.
-    \item \textbf{VPN cho người dùng từ xa:} Không có cấu hình VPN người dùng từ xa trong topology hoàn thiện. Nếu triển khai ngoài phạm vi mô phỏng, dùng xác thực cá nhân/MFA nếu hỗ trợ, thiết bị đầu cuối được quản lý và quyền theo vai trò; chỉ cấp tới ứng dụng cần thiết.
-    \item \textbf{Quản trị, IDS/IPS và ghi nhật ký:} VLAN quản trị là VLAN 90 tại cả ba cơ sở; Jump Host Main là \texttt{10.10.90.30} và Syslog/NTP Main là \texttt{10.10.90.20}. Báo cáo mô tả SSH từ Jump Host và chặn nguồn khác qua \texttt{access-class 10 in}; không ghi nhận IDS/IPS hoặc VPN đã cấu hình. Không đưa mật khẩu thực vào tài liệu bàn giao.
+    \item \textbf{OSPF/IPsec:} OSPF được mô phỏng trên các liên kết Carrier-R; cho phép IP protocol 89 giữa đúng router ngang hàng, không dùng TCP/UDP port 89. Ảnh testcase ghi nhận các SA IPsec site-to-site ở trạng thái hoạt động; cần kiểm tra đầy đủ subnet được bảo vệ, luồng hai chiều và failover trước khi nghiệm thu.
+    \item \textbf{VPN cho người dùng từ xa:} Ảnh testcase ghi nhận client VPN được cấp địa chỉ và có thể ping máy chủ nội bộ sau khi kết nối. Đây là bằng chứng trong mô phỏng, không xác nhận MFA, quản lý thiết bị đầu cuối hoặc mức độ bảo mật khi triển khai thực tế; các biện pháp đó vẫn cần được thiết kế.
+    \item \textbf{Quản trị, IDS/IPS và ghi nhật ký:} VLAN quản trị là VLAN 90 tại cả ba cơ sở; Jump Host Main là \texttt{10.10.90.30} và Syslog/NTP Main là \texttt{10.10.90.20}. Không có ảnh testcase xác nhận SSH từ Jump Host hoặc kiểm thử IDS/IPS; không trình bày các nội dung này như kết quả đã kiểm thử. Không đưa mật khẩu thực vào tài liệu bàn giao.
     \item \textbf{Kiểm thử sau thay đổi:} Kiểm tra cả luồng được phép và bị chặn, bản dịch NAT/trạng thái phiên, bộ đếm ACL và OSPF/VPN nếu đã chọn; lưu cấu hình, nhật ký/ảnh và kết quả thực tế so với dự kiến. Nếu dịch vụ bị ảnh hưởng, hoàn nguyên theo bản sao lưu.
 \end{enumerate}
 
 \subsection{Kế hoạch kiểm thử và trạng thái bằng chứng}
-Kế hoạch kiểm thử chi tiết gồm 30 ca SEC-01--SEC-30 trong CSV bàn giao riêng. CSV được cung cấp trước đó ghi các ca SEC là \textbf{Chưa thực hiện (Not run)}. Báo cáo mô tả Guest ping tới Server Farm bị chặn, truy cập Web từ Internet và SSH từ Jump Host thành công; ACL Guest vừa được chỉnh trong tài liệu nên các ca Guest phải chạy lại. Bảng dưới đây tách kết quả đã ghi nhận khỏi các ca còn chờ kiểm thử/bằng chứng.
+Chỉ các phép thử có ảnh trong \texttt{graphics/tc\_pic} được liệt kê dưới đây. Các phép thử không có ảnh đã được loại khỏi phần kết quả và không được xem là đã thực hiện hoặc đạt.
 
 \begin{small}
 \setlength{\tabcolsep}{3pt}
-\begin{longtable}{|p{2.2cm}|p{3.4cm}|p{5.8cm}|p{2.6cm}|}
-\caption{Nhóm kiểm thử bảo mật và tiêu chí nghiệm thu} \label{tab:security_test_summary} \\
+\begin{longtable}{|p{2.1cm}|p{7.1cm}|p{4.7cm}|}
+\caption{Các phép thử bảo mật có ảnh minh chứng} \label{tab:security_test_summary} \\
 \hline
-\textbf{Ca kiểm thử} & \textbf{Luồng kiểm tra} & \textbf{Kết quả mong đợi/bằng chứng chính} & \textbf{Trạng thái hiện tại} \\ \hline
+\textbf{Ca kiểm thử} & \textbf{Kết quả quan sát} & \textbf{Ảnh / đánh giá} \\ \hline
 \endfirsthead
-\multicolumn{4}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
+\multicolumn{3}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
 \hline
-\textbf{Ca kiểm thử} & \textbf{Luồng kiểm tra} & \textbf{Kết quả mong đợi/bằng chứng chính} & \textbf{Trạng thái hiện tại} \\ \hline
+\textbf{Ca kiểm thử} & \textbf{Kết quả quan sát} & \textbf{Ảnh / đánh giá} \\ \hline
 \endhead
 \hline
-\multicolumn{4}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
+\multicolumn{3}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
 \endfoot
 \hline
 \endlastfoot
 
-SEC-01--04, SEC-29 & Nhân viên truy cập DNS/ứng dụng; thử cổng chưa được duyệt & Máy chủ Main \texttt{10.10.40.10} được dùng cho DNS/DHCP; cổng ứng dụng chưa được nêu đầy đủ. & Định tuyến tới máy chủ có ghi nhận; các ca ACL/dịch vụ SEC vẫn Not run. \\ \hline
-SEC-05--07, SEC-23 & Truy cập Internet và chuyển đổi dự phòng WAN & Main dùng ASA2/ISP1; chi nhánh dùng ISP2-R khi leased line lỗi. & TC-01--06 trong \texttt{test.md} ghi PASS sau khắc phục định tuyến; không xác nhận mọi chính sách PAT/ACL. \\ \hline
-SEC-08--12 & Cô lập Guest; Staff tới Guest & ACL cho phép DNS và TCP/80, TCP/443 ra Internet; mạng nội bộ và DMZ bị chặn. & Ping tới Server Farm từng được báo timeout. ACL đã chỉnh trong báo cáo chưa được xác nhận trong Packet Tracer; chạy lại Guest-to-LAN/DMZ/Internet trước khi PASS. \\ \hline
-SEC-13--15 & Internet tới Web DMZ; Internet tới LAN/quản trị & Web công khai dùng \texttt{203.162.10.3} ánh xạ \texttt{10.10.50.10}, TCP/80; LAN/quản trị phải bị chặn. & Phần mô phỏng báo HTTP thành công; không có bằng chứng tương ứng trong \texttt{test.md}. \\ \hline
-SEC-16--17 & Máy thường và Jump Host truy cập SSH quản trị & Máy thường VLAN 10 bị từ chối; Jump Host \texttt{10.10.90.30} được phép tới thiết bị quản trị. & Phần mô phỏng báo đúng hai kết quả này; cần giữ output/cấu hình ACL làm bằng chứng. \\ \hline
-SEC-18--19 & Camera VLAN 70 tới NVR và Internet & Chỉ luồng tới NVR được duyệt; Internet bị chặn theo chính sách đề xuất. & Chưa thấy ca kiểm thử Camera/NVR trong báo cáo. \\ \hline
-SEC-20--22, SEC-30 & OSPF/IPsec và luồng ứng dụng liên cơ sở & OSPF được dùng trên WAN; IPsec chưa được mô tả là đã cấu hình. & OSPF/định tuyến có kiểm thử trong \texttt{test.md}; IPsec và ACL ứng dụng chưa được xác nhận. \\ \hline
-SEC-24--28 & Nhật ký, từ chối mặc định, DMZ tới nội bộ, lưu lượng ra và Medical & Cần kiểm tra log, luồng khởi tạo DMZ, egress và ứng dụng lâm sàng riêng. & Chưa có bằng chứng kiểm thử cụ thể trong báo cáo. \\ \hline
+SEC-01 & Từ \texttt{MAIN-B-GUEST}, ping tới \texttt{10.10.20.10} và \texttt{10.10.40.10} không thành công; ping \texttt{10.10.50.10} (DMZ) thành công 4/4 ở lần thử sau. Ping máy ngoài \texttt{192.0.2.10} nhận 3/4 phản hồi. & \texttt{SEC\_01.png}; \textbf{FAIL} cách ly Guest do vẫn tới được DMZ. \\ \hline
+SEC-02 & Từ máy \texttt{REMOTE}, ping \texttt{10.10.40.10} hết thời gian chờ, mất 4/4 gói. Chỉ xác nhận ICMP tới máy chủ này. & \texttt{SEC\_02.png}; \textbf{PASS có giới hạn}. \\ \hline
+DMZ-01 & Máy nhân viên mở được trang Web tại \texttt{10.10.50.11}. Địa chỉ này khác Web Server \texttt{10.10.50.10} trong quy hoạch. & \texttt{DMZ\_01.png}; \textbf{PASS} truy cập Staff-to-DMZ được thể hiện. \\ \hline
+INT-01 & Máy nhân viên mở được trang Web ngoài tại \texttt{192.0.2.10}. & \texttt{INT\_01.png}; \textbf{PASS} truy cập Web Internet trong mô phỏng. \\ \hline
+VPN-S2S-01 & Có IKE SA ở trạng thái \texttt{QM\_IDLE} với hai peer; ảnh hiển thị bộ đếm IPsec có encaps/decaps cho peer \texttt{10.255.0.18}. & \texttt{VPN\_01.1.png}; \textbf{PASS có giới hạn}, xác nhận SA và lưu lượng cho peer hiển thị. \\ \hline
+VPN-RA-01 & Client VPN hiển thị trạng thái đã kết nối và được cấp địa chỉ \texttt{10.10.200.10}. & \texttt{VPN\_02.png}; xác nhận kết nối/cấp địa chỉ, chưa tự chứng minh truy cập ứng dụng. \\ \hline
+VPN-RA-02 & Client từ xa ping \texttt{10.10.40.10}; lần đầu mất 1/4 gói, lần thử tiếp theo nhận 4/4 phản hồi. Ảnh cũng hiển thị IPsec SA hoạt động. & \texttt{VPN\_01.png}; \textbf{PASS sau hội tụ}, có mất gói ban đầu. \\ \hline
 \end{longtable}
 \end{small}
 
-\noindent\textbf{Tiêu chí Pass/Fail:} Pass khi kết quả quan sát khớp kết quả mong đợi, luồng được phép vẫn hoạt động và có bằng chứng tương ứng; Fail khi luồng bị cấm vẫn thành công, luồng được phép bị chặn hoặc bằng chứng không đủ để xác định kết quả. Ghi \textit{Chưa thực hiện (Not run)} nếu chưa chạy kiểm thử. Chỉ thực hiện các ca có điều kiện sau khi đã xác nhận đích, dịch vụ, thời gian kiểm thử và phê duyệt. Không quét dải nội bộ; chỉ kiểm tra đích đã được cho phép.
+\noindent Các ảnh được chèn bên dưới là bằng chứng trực quan cho đúng các kết quả nêu trong bảng. Kết quả chỉ áp dụng cho thiết bị, địa chỉ, giao thức và thời điểm thể hiện trong ảnh; không suy rộng thành kiểm thử toàn bộ chính sách bảo mật. Các ca SSH quản trị, truy cập Internet-to-DMZ qua NAT, Camera/NVR và các luồng không có ảnh không được liệt kê như kết quả đã chạy.
 
-\noindent \texttt{test.md} ghi các kiểm tra định tuyến/OSPF/HSRP và xuất cấu hình; báo cáo mô tả thêm Guest ping bị chặn, Web công khai và Jump Host đăng nhập thành công. Những kết quả đó không xác nhận toàn bộ 30 ca SEC. Vì ACL Guest đã được chỉnh trong tài liệu, cần áp dụng và chạy lại các ca Guest trước khi xác nhận trạng thái cuối.
+\begin{figure}[H]
+    \centering
+    \captionsetup{skip=10pt}
+    \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/SEC_01.png}
+    \caption{SEC-01: kết quả ping từ Guest tới các mạng nội bộ, DMZ và máy ngoài}
+    \label{fig:security-sec-01}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{skip=10pt}
+    \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/SEC_02.png}
+    \caption{SEC-02: máy từ xa không nhận phản hồi ICMP từ Server Farm}
+    \label{fig:security-sec-02}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{skip=10pt}
+    \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/DMZ_01.png}
+    \caption{DMZ-01: máy nhân viên truy cập trang Web tại máy chủ DMZ}
+    \label{fig:security-dmz-01}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{skip=10pt}
+    \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/INT_01.png}
+    \caption{INT-01: máy nhân viên truy cập trang Web bên ngoài}
+    \label{fig:security-int-01}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{skip=10pt}
+    \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/VPN_01.1.png}
+    \caption{VPN-S2S-01: trạng thái IKE/IPsec và bộ đếm lưu lượng trên WAN-R2}
+    \label{fig:security-vpn-s2s}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{skip=10pt}
+    \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/VPN_02.png}
+    \caption{VPN-RA-01: client VPN đã kết nối và được cấp địa chỉ}
+    \label{fig:security-vpn-ra-01}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{skip=10pt}
+    \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/VPN_01.png}
+    \caption{VPN-RA-02: client từ xa truy cập Server Farm qua VPN}
+    \label{fig:security-vpn-ra-02}
+\end{figure}
 
 \subsection{Tính năng chưa thể mô phỏng đầy đủ}
 \begin{itemize}
     \item \textbf{IDS/IPS/NGFW:} Packet Tracer không mô phỏng đầy đủ chữ ký phát hiện/ngăn chặn, phân tích nội dung sâu hoặc giải mã TLS. Đề xuất dùng nền tảng IDS/IPS phù hợp trong môi trường thực tế; kiểm thử ở chế độ giám sát trước khi bật chế độ chặn, đặc biệt với thiết bị y tế.
-    \item \textbf{VPN liên cơ sở và VPN người dùng từ xa:} WAN trong mô hình hiện được định tuyến trực tiếp; chưa có bằng chứng đường hầm IPsec hoặc VPN truy cập từ xa đã được cấu hình/kiểm thử. Cần xác nhận thiết bị, địa chỉ peer, các subnet được bảo vệ, phương thức xác thực và ghi nhật ký trước khi triển khai.
+    \item \textbf{VPN liên cơ sở và VPN người dùng từ xa:} Ảnh testcase ghi nhận SA IPsec site-to-site, client VPN được cấp địa chỉ và một phiên truy cập Server Farm. Các ảnh không chứng minh đầy đủ mọi peer, subnet, cơ chế xác thực, logging hoặc bảo mật khi triển khai thực tế; cần kiểm thử và rà soát cấu hình bổ sung.
     \item \textbf{AAA/MFA, quản lý khóa và SIEM:} Mô hình không chứng minh đầy đủ RADIUS/TACACS+, MFA, vòng đời chứng thư/khóa bí mật hay tương quan nhật ký tập trung. Đây là khuyến nghị triển khai, không phải tính năng đã nghiệm thu.
     \item \textbf{Hiệu năng và tính sẵn sàng thực tế:} Packet Tracer không chứng minh thông lượng, tải đồng thời Wi-Fi, hiệu năng IPS, độ trễ VPN hoặc khả năng chuyển đổi dự phòng phần cứng. Cần thử nghiệm trong môi trường thiết bị/ảo hóa phù hợp trước khi triển khai thực tế.
 \end{itemize}

@@ -20,10 +20,10 @@ Dưới đây là toàn bộ nhật ký kiểm thử thực tế được ghi nh
 
 - TC-01--TC-06 ghi nhận kiểm thử định tuyến, OSPF/HSRP và failover; TC-07 chỉ ghi nhận xuất cấu hình 15/25 thiết bị.
 - Cấu hình trong `config.md` đặt native VLAN 1 trên trunk tại cả DBP và BHTQ, VLAN 99 được gắn thẻ. Bằng chứng kiểm thử việc khắc phục native VLAN hiện ghi nhận tại BHTQ; cấu hình tương ứng tại DBP cần được kiểm tra riêng.
-- Các mục 2.1--2.3 trong `Content/cisco.tex` mô tả thử Guest, Web DMZ và Jump Host. Đây là kết quả được báo cáo trong mô phỏng; nhật ký này chưa kèm output ACL/NAT, ảnh chụp hoặc log phiên để đối chiếu độc lập.
-- ACL Guest trong báo cáo đã được chỉnh để chỉ cho DNS tới `10.10.40.10` và TCP/80, TCP/443 ra ngoài; mạng `10.0.0.0/8`, bao gồm DMZ `10.10.50.10`, bị chặn. Vì vậy phải chạy lại Guest-to-DMZ sau khi áp dụng ACL; không dùng kết quả “truy cập DMZ thành công” cũ làm bằng chứng PASS.
-- Truy cập HTTP từ Internet tới `203.162.10.3` và SSH từ Jump Host `10.10.90.30` được mô tả là thành công trong báo cáo chính, nhưng cần bổ sung ảnh chụp hoặc log phiên tương ứng vào bộ bằng chứng.
-- Các ca chi tiết SEC trong `security_test_plan.csv` là kế hoạch kiểm thử riêng; chỉ đánh dấu PASS/FAIL sau khi chạy từng ca và lưu bằng chứng. Không suy diễn trạng thái của chúng từ các ca định tuyến TC-01--TC-07.
+- Ảnh testcase trong `graphics/tc_pic` gồm bằng chứng cho một số ca LAN, WAN/failover, HSRP, Guest, DMZ/Internet và VPN. Các ảnh LAN/WAN/HSRP được đặt tại giai đoạn kiểm thử tương ứng trong `Content/cisco.tex`; ảnh bảo mật được mô tả và giới hạn phạm vi trong `Content/security.tex`.
+- Ảnh `SEC_01.png` cho thấy Guest không ping được một số đích LAN nhưng ping được `10.10.50.10` trong DMZ; ca cô lập Guest vì vậy FAIL theo chính sách chặn Guest khỏi DMZ.
+- Ảnh `SEC_02.png` chỉ xác nhận ping từ máy REMOTE tới `10.10.40.10` bị chặn. Ảnh DMZ/Internet/VPN chứng minh riêng các luồng và máy chủ hiển thị; không suy rộng sang NAT công khai hoặc toàn bộ chính sách ACL.
+- Không có ảnh cho SSH từ Jump Host hoặc Internet-to-DMZ qua NAT công khai; các phép thử đó không được xem là đã xác minh. Các file `security_test_plan.csv` và các CSV bàn giao khác không có trong workspace.
 
 ## 2. Danh sách các tình huống Backup / Failover trong hệ thống
 
