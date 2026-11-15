@@ -11,14 +11,14 @@
 \subsection{Tổng quan kiến trúc mạng bệnh viện đa chi nhánh}
 Dự án được thiết kế chuyên biệt cho hệ thống công nghệ thông tin y tế của một Bệnh viện theo đúng đề bài Assignment 2, đòi hỏi độ tin cậy cao, đảm bảo lưu thông thông suốt cho các hệ thống phần mềm quản lý bệnh viện, hệ thống lưu trữ và truyền hình ảnh y khoa dung lượng lớn, hệ thống xét nghiệm, cơ sở dữ liệu y bạ điện tử và giám sát an ninh camera IP.
 
-Mô hình mạng tích hợp cấu trúc phân cấp chuẩn của Cisco kết hợp với mô hình bảo mật đa vùng. Hệ thống gồm tổng cộng 25 thiết bị mạng chuyên dụng được bố trí trên 4 phân vùng chiến lược:
+Mô hình mạng tích hợp cấu trúc phân cấp chuẩn của Cisco kết hợp với mô hình bảo mật đa vùng. Hệ thống gồm tổng cộng 29 thiết bị mạng chuyên dụng được bố trí trên 4 phân vùng chiến lược:
 \begin{enumerate}
     \item \textbf{Trụ sở chính (Main Site - HCMC):} Gồm 2 tòa nhà chức năng lớn A và B (mỗi tòa 5 tầng, 10 phòng/tầng, phục vụ trên 600 máy trạm người dùng), Trung tâm dữ liệu (Server Farm) và Trung tâm điều hành cáp mạng IT đặt cách xa 50 mét. Hệ thống chuyển mạch trung tâm gồm cụm chuyển mạch đa tầng đối xứng....
     \item \textbf{Vùng biên, Phân tầng DMZ \& Cổng Internet:} Kiến trúc phòng vệ kép sử dụng 2 tường lửa Cisco ASA:
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item \textbf{\texttt{ASA1} (Tường lửa phân tách nội bộ và WAN):} Phân chia ranh giới tin cậy cao giữa mạng Core nội bộ với mạng WAN chính, WAN dự phòng, và vùng đệm DMZ.
-        \item \textbf{\texttt{ASA2} (Tường lửa biên Internet):} Đảm trách chức năng bảo vệ vùng DMZ, thực hiện Static NAT công khai cổng thông tin y tế bệnh viện ra Internet và Dynamic PAT cho các máy trạm nội bộ duyệt Web ra ngoài thông qua router biên \texttt{ISP1-R}.
-        \item Cụm thiết bị hỗ trợ vùng biên gồm Switch Layer 3 \texttt{DMZ-SW}, Switch phân phối \texttt{MAIN-WAN-SW1}, \texttt{MAIN-WAN-SW2}, và hai router biên WAN trung tâm \texttt{MAIN-WAN-R1}, \texttt{MAIN-WAN-R2}.
+        \item \textbf{\texttt{MAIN-FW-01} (Tường lửa phân tách nội bộ và WAN):} Phân chia ranh giới tin cậy cao giữa mạng Core nội bộ với mạng WAN chính, WAN dự phòng, và vùng đệm DMZ.
+        \item \textbf{\texttt{MAIN-FW-02} (Tường lửa biên Internet):} Đảm trách chức năng bảo vệ vùng DMZ, thực hiện Static NAT công khai cổng thông tin y tế bệnh viện ra Internet và Dynamic PAT cho các máy trạm nội bộ duyệt Web ra ngoài thông qua router biên \texttt{ISP1-R}.
+        \item Cụm thiết bị hỗ trợ vùng biên gồm Switch Layer 3 \texttt{DMZ-SW} (nối các máy chủ \texttt{DMZ-WEB}, \texttt{DMZ-SERVER}, \texttt{DMZ-DNS}), router VPN \texttt{MAIN-VPN}, Switch phân phối \texttt{MAIN-WAN1-SW}, \texttt{MAIN-WAN2-SW}, và hai router biên WAN trung tâm \texttt{MAIN-WAN-R1}, \texttt{MAIN-WAN-R2}.
     \end{itemize}
     \item \textbf{Hạ tầng truyền dẫn WAN cốt lõi (WAN Backbone):}
     \begin{itemize}[noitemsep,topsep=2pt]
@@ -35,7 +35,7 @@ Bảng~\ref{tab:device_inventory} tổng hợp thông số kỹ thuật, định
 \begin{small}
 \setlength{\tabcolsep}{4pt}
 \begin{longtable}{|p{2.0cm}|p{2.8cm}|p{3.0cm}|p{6.8cm}|}
-\caption{Bảng đặc tả kỹ thuật và vai trò 25 thiết bị mạng toàn hệ thống} \label{tab:device_inventory} \\
+\caption{Bảng đặc tả kỹ thuật và vai trò 29 thiết bị mạng toàn hệ thống} \label{tab:device_inventory} \\
 \hline
 \textbf{Tên thiết bị} & \textbf{Dòng phần cứng} & \textbf{Vị trí / Phân vùng} & \textbf{Vai trò kiến trúc \& Giao thức cốt lõi} \\ \hline
 \endfirsthead
@@ -53,31 +53,35 @@ Bảng~\ref{tab:device_inventory} tổng hợp thông số kỹ thuật, định
 \hline
 \endlastfoot
 
-\texttt{MAIN-Core-SW1} & Catalyst 3560-24PS & Main Site (Core) & HSRP Active (Prio 200), STP Root Bridge (Prio 4096), OSPF RID 2.2.2.1, LACP Port-channel 1, DHCP Relay. \\ \hline
-\texttt{MAIN-Core-SW2} & Catalyst 3560-24PS & Main Site (Core) & HSRP Standby (Prio 150), STP Secondary Root (Prio 8192), OSPF RID 2.2.2.2, Tuyến dự phòng VLAN 253 lên ASA1. \\ \hline
-\texttt{MAIN-Server-SW} & Catalyst 2960-24TT & Main Site (Data Center) & Phân phối Layer 2 kết nối Cụm máy chủ HIS/PACS/DNS/DHCP tại VLAN 40. \\ \hline
-\texttt{MAIN-Mgmt-SW} & Catalyst 2960-24TT & Main Site (IT Room) & Kết nối trạm nhảy Jump Host (10.10.90.30) và Syslog/NTP (10.10.90.20) thuộc VLAN 90. \\ \hline
-\texttt{MAIN-Cam-SW} & Catalyst 2960-24TT & Main Site (Security) & Phân phối hạ tầng giám sát an ninh tập trung VLAN 70 (Camera IP chuyên dụng). \\ \hline
-\texttt{MAIN-Access-A} & Catalyst 2960-24TT & Main Site (Tòa nhà A) & Switch truy cập tầng phục vụ máy trạm Bác sĩ, Nhân viên và AP Khách (VLAN 10, 60, 80). \\ \hline
-\texttt{MAIN-Access-B} & Catalyst 2960-24TT & Main Site (Tòa nhà B) & Switch truy cập tầng phục vụ Khối hành chính, Bệnh án và WiFi (VLAN 20, 60). \\ \hline
-\texttt{MAIN-ASA1} & Cisco ASA 5506-X & Main Site (Internal FW) & Phân tách 5 vùng an ninh: inside (100), inside-backup (100), wan (70), backup-wan (60), dmz (50). \\ \hline
-\texttt{MAIN-ASA2} & Cisco ASA 5506-X & Main Site (Edge FW) & Tường lửa biên Internet; Static NAT cho Web Server DMZ, Dynamic PAT cho mạng nội bộ ra ngoài. \\ \hline
-\texttt{MAIN-DMZ-SW} & Catalyst 3560-24PS & Phân tầng DMZ & Chuyển mạch Layer 3 trung chuyển giữa ASA1, ASA2 và Web Server bệnh viện (10.10.50.10). \\ \hline
-\texttt{MAIN-WAN-SW1} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN chính giữa cổng Gi1/2 của ASA1 và WAN-R1. \\ \hline
-\texttt{MAIN-WAN-SW2} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN phụ giữa cổng Gi1/1 của ASA1 và WAN-R2. \\ \hline
+\texttt{MAIN-CORE-SW1} & Catalyst 3560-24PS & Main Site (Core) & HSRP Active (Prio 200), STP Root Bridge (Prio 4096), OSPF RID 2.2.2.1, LACP Port-channel 1, DHCP Relay. \\ \hline
+\texttt{MAIN-CORE-SW2} & Catalyst 3560-24PS & Main Site (Core) & HSRP Standby (Prio 150), STP Secondary Root (Prio 8192), OSPF RID 2.2.2.2, Tuyến dự phòng VLAN 253 lên MAIN-FW-01 (đã cấu hình; liên kết hiển thị down trên sơ đồ, chưa kiểm chứng). \\ \hline
+\texttt{Server-SW} & Catalyst 2960-24TT & Main Site (Data Center) & Phân phối Layer 2 kết nối cụm máy chủ MAIN-DHCP, MAIN-SYSLOG (10.10.40.11), MAIN-EMAIL, MAIN-FTP cùng router MAIN-R và MAIN-WLC tại Server Farm (VLAN 40). \\ \hline
+\texttt{Mgmt-SW} & Catalyst 2960-24TT & Main Site (IT Room) & Kết nối trạm quản trị MAIN-SSH (Jump Host, 10.10.90.30), máy chủ MAIN-NTP (10.10.90.20) và máy chủ AAA thuộc VLAN 90. \\ \hline
+\texttt{Cam-SW} & Catalyst 2960-24TT & Main Site (Security) & Phân phối hạ tầng giám sát an ninh tập trung VLAN 70 (Camera IP chuyên dụng). \\ \hline
+\texttt{SW-MAIN-A} & Catalyst 2960-24TT & Main Site (Tòa nhà A) & Switch truy cập tầng phục vụ máy trạm Bác sĩ, Nhân viên và AP Khách (VLAN 10, 60, 80). \\ \hline
+\texttt{SW-MAIN-B} & Catalyst 2960-24TT & Main Site (Tòa nhà B) & Switch truy cập tầng phục vụ Khối hành chính, Bệnh án và WiFi (VLAN 20, 60). \\ \hline
+\texttt{MAIN-FW-01} & Cisco ASA 5506-X & Main Site (Internal FW) & Phân tách 5 vùng an ninh: inside (100), inside-backup (100), wan (70), backup-wan (60), dmz (50). \\ \hline
+\texttt{MAIN-FW-02} & Cisco ASA 5506-X & Main Site (Edge FW) & Tường lửa biên Internet; Static NAT cho Web Server DMZ, Dynamic PAT cho mạng nội bộ ra ngoài. \\ \hline
+\texttt{DMZ-SW} & Catalyst 3560-24PS & Phân tầng DMZ & Chuyển mạch Layer 3 trung chuyển giữa MAIN-FW-01, MAIN-FW-02, MAIN-VPN và các máy chủ DMZ (DMZ-WEB 10.10.50.10, DMZ-SERVER 10.10.50.11, DMZ-DNS). \\ \hline
+\texttt{MAIN-WAN1-SW} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN chính giữa cổng Gi1/2 của MAIN-FW-01 và MAIN-WAN-R1. \\ \hline
+\texttt{MAIN-WAN2-SW} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN phụ giữa cổng Gi1/1 của MAIN-FW-01 và MAIN-WAN-R2. \\ \hline
 \texttt{MAIN-WAN-R1} & Cisco 2911 ISR & Main Site (WAN Edge) & Router biên Leased Line chính: OSPF Area 0, OSPF Cost 10, kết nối trực tiếp Carrier-R qua Serial0/3/0. \\ \hline
 \texttt{MAIN-WAN-R2} & Cisco 2911 ISR & Main Site (WAN Edge) & Router biên Broadband phụ trợ: Định tuyến tĩnh, kết nối mạng dự phòng ISP2-R qua Serial0/3/1. \\ \hline
 \texttt{ISP1-R} & Cisco 2911 ISR & Mạng Internet Public & Router đại diện nhà cung cấp dịch vụ Internet, cấp dải địa chỉ Public 203.162.10.0/29. \\ \hline
+\texttt{ISP1-SW} & Catalyst 2960-24TT & Mạng Internet Public & Switch nối ISP1-R với máy REMOTE và router MAIN-VPN (máy chủ INTERNET WEB nối trực tiếp vào ISP1-R). \\ \hline
+\texttt{MAIN-VPN} & Cisco 2911 ISR & Main Site (Internet Edge) & Router cổng VPN truy cập từ xa (crypto map CLIENT-VPN-MAP) đặt tại vùng Internet Edge, nối ISP1-SW, DMZ-SW và MAIN-FW-01; cấp địa chỉ 10.10.200.x cho máy REMOTE. \\ \hline
+\texttt{MAIN-R} & Cisco 2901 ISR & Main Site (Server Farm) & Router 2901 đặt tại Server Farm, nối Server-SW. \\ \hline
+\texttt{MAIN-WLC} & Wireless LAN Controller & Main Site (Server Farm) & Bộ điều khiển WLAN, nối Server-SW, quản lý các Access Point MAIN-A-AP và MAIN-B-AP. \\ \hline
 \texttt{Carrier-R}& Cisco 2911 ISR & Trục đường truyền chính & Backbone Leased Line / MPLS viễn thông: OSPF Area 0, liên kết điểm--điểm tốc độ cao tới 3 Site. \\ \hline
 \texttt{ISP2-R} & Cisco 2911 ISR & Trục đường truyền phụ & Mạng FTTH/Broadband công cộng: Cung cấp kênh dự phòng cho các tuyến WAN chi nhánh. \\ \hline
 \texttt{DBP-R1} & Cisco 2911 ISR & Chi nhánh DBP (Chính) & HSRP Active (Prio 110, Track Serial0/3/0 decr 60), Subinterface 802.1Q (Gi0/0.x), OSPF qua Carrier-R. \\ \hline
 \texttt{DBP-R2} & Cisco 2911 ISR & Chi nhánh DBP (Phụ) & HSRP Standby (Prio 105), Floating Static Route (AD 150) qua ISP2-R, Subinterface Gi0/0.x. \\ \hline
-\texttt{DBP-SW1} & Catalyst 2960-24TT & Chi nhánh DBP (L2) & Switch phân phối tầng 1: Trunking 802.1Q nối DBP-R1, DBP-R2, phân phối VLAN 10, 30, 40, 70, 90. \\ \hline
-\texttt{DBP-SW2} & Catalyst 2960-24TT & Chi nhánh DBP (L2) & Switch phân phối tầng 2: Dự phòng loop bằng STP, kết nối máy trạm lâm sàng và phòng xét nghiệm DBP. \\ \hline
+\texttt{DBP-SW1} & Catalyst 2960-24TT & Chi nhánh DBP (L2) & Nối DBP-R2 (gateway dự phòng) và DBP-SW2; kết nối DBP-PC1, DBP-PC2 và máy in DBP-P; trunk 802.1Q cho VLAN 10, 30, 40, 70, 90. \\ \hline
+\texttt{DBP-SW2} & Catalyst 2960-24TT & Chi nhánh DBP (L2) & Nối DBP-R1 (gateway chính) và DBP-SW1 (STP chống loop); kết nối DBP-DHCP, DBP-SERVER-CAM, DBP-AP, DBP-CAM và DBP-PC3. \\ \hline
 \texttt{BHTQ-R1}& Cisco 2911 ISR & Chi nhánh BHTQ (Chính)& HSRP Active (Prio 110, Track Serial0/3/0 decr 60), Subinterface 802.1Q (Gi0/0.x), OSPF qua Carrier-R. \\ \hline
 \texttt{BHTQ-R2}& Cisco 2911 ISR & Chi nhánh BHTQ (Phụ)& HSRP Standby (Prio 105), Floating Static Route (AD 150) qua ISP2-R, Subinterface Gi0/0.x. \\ \hline
-\texttt{BHTQ-SW1}& Catalyst 2960-24TT & Chi nhánh BHTQ (L2) & Switch phân phối tầng 1: Trunking 802.1Q nối BHTQ-R1, BHTQ-R2, phân phối VLAN 10, 30, 40, 70, 90. \\ \hline
-\texttt{BHTQ-SW2}& Catalyst 2960-24TT & Chi nhánh BHTQ (L2) & Switch phân phối tầng 2: Kết nối máy trạm khám bệnh, máy chẩn đoán hình ảnh và camera BHTQ. \\ \hline
+\texttt{BHTQ-SW1}& Catalyst 2960-24TT & Chi nhánh BHTQ (L2) & Nối BHTQ-R2 (gateway dự phòng) và BHTQ-SW2; kết nối BHTQ-PC1, BHTQ-PC2 và máy in BHTQ-P; trunk 802.1Q cho VLAN 10, 30, 40, 70, 90. \\ \hline
+\texttt{BHTQ-SW2}& Catalyst 2960-24TT & Chi nhánh BHTQ (L2) & Nối BHTQ-R1 (gateway chính) và BHTQ-SW1; kết nối BHTQ-PC3, BHTQ-CAM, BHTQ-AP, BHTQ-DHCP và BHTQ-SERVER-CAM. \\ \hline
 \end{longtable}
 \end{small}
 
@@ -89,8 +93,8 @@ Hệ thống sử dụng không gian địa chỉ riêng biệt theo chuẩn RFC
     \item \textbf{Chi nhánh 2 (BHTQ):} Dải mạng \texttt{10.30.0.0/16}, gồm VLAN 10 (\texttt{10.30.10.0/24}), VLAN 30 (\texttt{10.30.30.0/24}), VLAN 40 (\texttt{10.30.40.0/24}), VLAN 70 Camera (\texttt{10.30.70.0/24}), VLAN 90 Quản trị (\texttt{10.30.90.0/24}) và VLAN 99 cho kết nối định tuyến/HSRP (\texttt{10.30.99.0/24}). Trunk dùng VLAN 1 làm native; VLAN 99 được gắn thẻ.
     \item \textbf{Mạng truyền dẫn điểm--điểm liên kết WAN (Point-to-Point /30):}
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item Kênh chính Carrier-R: \texttt{10.255.0.0/30} (WAN-R1), \texttt{10.255.0.4/30} (WAN-R2), \texttt{10.255.0.8/30} (DBP-R1), \texttt{10.255.0.12/30} (BHTQ-R1).
-        \item Kênh phụ ISP2-R: \texttt{10.255.0.16/30} (DBP-R2), \texttt{10.255.0.20/30} (BHTQ-R2), \texttt{10.255.0.24/30} (WAN-R2).
+        \item Kênh chính Carrier-R: \texttt{10.255.0.0/30} (MAIN-WAN-R1), \texttt{10.255.0.4/30} (MAIN-WAN-R2), \texttt{10.255.0.8/30} (DBP-R1), \texttt{10.255.0.12/30} (BHTQ-R1).
+        \item Kênh phụ ISP2-R: \texttt{10.255.0.16/30} (DBP-R2), \texttt{10.255.0.20/30} (BHTQ-R2), \texttt{10.255.0.24/30} (MAIN-WAN-R2).
     \end{itemize}
 \end{itemize}
 
@@ -115,17 +119,17 @@ Hệ thống sử dụng không gian địa chỉ riêng biệt theo chuẩn RFC
 \hline
 \endlastfoot
 
-VLAN 10 & Staff-A (Khu A) & \texttt{10.10.10.0/23} & \texttt{10.10.10.1} (Prio 200/150) & Cấp phát DHCP Relay tới 10.10.40.10, truy cập HIS. \\ \hline
+VLAN 10 & Staff-A (Khu A) & \texttt{10.10.10.0/23} & \texttt{10.10.10.1} (Prio 200/150) & Cấp phát DHCP Relay tới Server Farm (MAIN-DHCP), truy cập dịch vụ Server Farm. \\ \hline
 VLAN 20 & Staff-B (Khu B) & \texttt{10.10.20.0/23} & \texttt{10.10.20.1} (Prio 200/150) & Khối hành chính, tiếp đón bệnh nhân; DHCP Relay. \\ \hline
-VLAN 30 & Medical Devices & \texttt{10.10.30.0/24} & \texttt{10.10.30.1} (Prio 200/150) & Kết nối máy chẩn đoán hình ảnh, xét nghiệm y khoa. \\ \hline
-VLAN 40 & Server Farm & \texttt{10.10.40.0/24} & \texttt{10.10.40.1} (Prio 200/150) & Đặt máy chủ dữ liệu HIS, PACS, LIS, DNS/DHCP. \\ \hline
-VLAN 50 & Vùng đệm DMZ & \texttt{10.10.50.0/24} & \texttt{10.10.50.1} / \texttt{.2} & Đặt Web Server (10.10.50.10); Static NAT ra ngoài. \\ \hline
+VLAN 30 & Medical Devices & \texttt{10.10.30.0/24} & \texttt{10.10.30.1} (Prio 200/150) & Dành cho máy chẩn đoán hình ảnh, xét nghiệm y khoa. Cisco Packet Tracer không có mô hình thiết bị y tế chuyên dụng nên VLAN này chỉ được quy hoạch và cấu hình gateway, không có thiết bị đầu cuối thể hiện trong mô phỏng. \\ \hline
+VLAN 40 & Server Farm & \texttt{10.10.40.0/24} & \texttt{10.10.40.1} (Prio 200/150) & Đặt các máy chủ MAIN-DHCP, MAIN-SYSLOG (10.10.40.11), MAIN-EMAIL, MAIN-FTP. \\ \hline
+VLAN 50 & Vùng đệm DMZ & \texttt{10.10.50.0/24} & \texttt{10.10.50.1} / \texttt{.2} & Đặt DMZ-WEB (Web Server, 10.10.50.10; Static NAT ra ngoài), DMZ-SERVER (10.10.50.11) và DMZ-DNS. \\ \hline
 VLAN 60 & Guest WiFi & \texttt{10.10.60.0/22} & \texttt{10.10.60.1} (Prio 200/150) & Bị cô lập bởi ACL-GUEST-ISOLATE; chỉ duyệt Internet. \\ \hline
 VLAN 70 & Camera giám sát & \texttt{10.10.70.0/24} & \texttt{10.10.70.1} (Prio 200/150) & Hạ tầng giám sát an ninh NVR/CCTV; hạn chế định tuyến. \\ \hline
 VLAN 80 & Voice over IP & \texttt{10.10.80.0/24} & \texttt{10.10.80.1} (Prio 200/150) & Điện thoại IP nội bộ bệnh viện; ưu tiên CoS/QoS. \\ \hline
-VLAN 90 & Management & \texttt{10.10.90.0/24} & \texttt{10.10.90.1} (Prio 200/150) & Đặt Jump Host (10.10.90.30) và Syslog (10.10.90.20). \\ \hline
-VLAN 250 & Transit Inside & \texttt{10.10.250.0/29}& \texttt{10.10.250.1} (Prio 200/150) & Tuyến uplink chính giữa Core-SW1/2 và cổng Gi1/4 ASA1. \\ \hline
-VLAN 253 & Inside Backup & \texttt{10.10.253.0/29}& Giao diện điểm--điểm & Tuyến cứu sinh từ Core-SW2 lên cổng Gi1/5 ASA1 (AD 10). \\ \hline
+VLAN 90 & Management & \texttt{10.10.90.0/24} & \texttt{10.10.90.1} (Prio 200/150) & Đặt MAIN-SSH (Jump Host, 10.10.90.30), MAIN-NTP (10.10.90.20) và máy chủ AAA. \\ \hline
+VLAN 250 & Transit Inside & \texttt{10.10.250.0/29}& \texttt{10.10.250.1} (Prio 200/150) & Tuyến uplink chính giữa MAIN-CORE-SW1/2 và cổng Gi1/4 MAIN-FW-01. \\ \hline
+VLAN 253 & Inside Backup & \texttt{10.10.253.0/29}& Giao diện điểm--điểm & Tuyến cứu sinh cấu hình từ MAIN-CORE-SW2 lên cổng Gi1/5 MAIN-FW-01 (AD 10); liên kết này đang down trên sơ đồ nên chưa được kiểm chứng. \\ \hline
 \end{longtable}
 \end{small}
 
@@ -139,8 +143,8 @@ Dưới góc độ nghiên cứu khoa học và kỹ thuật mạng thực chi�
     \end{itemize}
     \item \textbf{Giả định về mô hình dịch vụ tập trung}
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item Nhằm tối ưu hóa chi phí đầu tư phần cứng và đồng bộ hóa dữ liệu y tế, toàn bộ dịch vụ cốt lõi được đặt tập trung tại cụm máy chủ Data Center Main Site (\texttt{10.10.40.10}).
-        \item Các chi nhánh DBP và BHTQ không duy trì hệ thống máy chủ DHCP nội bộ độc lập mà sử dụng kỹ thuật chuyển tiếp bản tin DHCP Broadcast thông qua bộ tác nhân \texttt{ip helper-address 10.10.40.10} được cấu hình trên từng Subinterface của router chi nhánh.
+        \item Các dịch vụ hạ tầng của Main Site được đặt tập trung tại Server Farm (VLAN 40): \texttt{MAIN-DHCP}, \texttt{MAIN-SYSLOG} (\texttt{10.10.40.11}), \texttt{MAIN-EMAIL}, \texttt{MAIN-FTP}; vùng DMZ có \texttt{DMZ-WEB}, \texttt{DMZ-SERVER} và \texttt{DMZ-DNS}. Các hệ thống nghiệp vụ bệnh viện (HIS, PACS, LIS) là phần mềm ứng dụng, không được mô phỏng bằng thiết bị riêng trong Cisco Packet Tracer.
+        \item Mỗi chi nhánh DBP và BHTQ có máy chủ DHCP cục bộ (\texttt{DBP-DHCP}, \texttt{BHTQ-DHCP}) cấp địa chỉ cho các VLAN tại chỗ; các chi nhánh vẫn truy cập dịch vụ của Main Site qua đường WAN.
     \end{itemize}
     \item \textbf{Giả định về chuẩn hóa đóng gói 802.1Q và cơ chế truyền thông tin Multicast:}
     \begin{itemize}[noitemsep,topsep=2pt]
@@ -164,8 +168,8 @@ Dưới góc độ nghiên cứu khoa học và kỹ thuật mạng thực chi�
 \subsection{Giai đoạn 1: Kiểm tra trạng thái vận hành chuẩn và hội tụ giao thức}
 \subsubsection{Bước 1.1: Kiểm tra trạng thái HSRP trên toàn bộ các cổng Gateway}
 Truy cập vào giao diện dòng lệnh (CLI) của các thiết bị đóng vai trò trạm chuyển tiếp chính và phụ để kiểm tra trạng thái nhóm HSRP:
-\begin{lstlisting}[language=csh,caption={Kiểm tra trạng thái HSRP trên Core-SW1 và Router chi nhánh}]
-Core-SW1# show standby brief
+\begin{lstlisting}[language=csh,caption={Kiểm tra trạng thái HSRP trên MAIN-CORE-SW1 và Router chi nhánh}]
+MAIN-CORE-SW1# show standby brief
                    P indicates configured to preempt.
                    |
 Interface   Grp  Pri P State   Active          Standby         Virtual IP
@@ -188,21 +192,21 @@ Gi0/0.70    70   110 P Active  local           10.20.70.3      10.20.70.1
 Gi0/0.90    90   110 P Active  local           10.20.90.3      10.20.90.1
 Gi0/0.99    99   110 P Active  local           10.20.99.3      10.20.99.1
 \end{lstlisting}
-\textbf{Tiêu chí nghiệm thu:} Toàn bộ các nhóm trên \texttt{Core-SW1}, \texttt{DBP-R1}, \texttt{BHTQ-R1} phải ở trạng thái \textbf{\texttt{Active}}, và hiển thị đúng địa chỉ Standby của thiết bị phụ (\texttt{Core-SW2}, \texttt{DBP-R2}, \texttt{BHTQ-R2}). Không có nhóm nào bị kẹt ở trạng thái \texttt{Speak} hay \texttt{Unknown}.
+\textbf{Tiêu chí nghiệm thu:} Toàn bộ các nhóm trên \texttt{MAIN-CORE-SW1}, \texttt{DBP-R1}, \texttt{BHTQ-R1} phải ở trạng thái \textbf{\texttt{Active}}, và hiển thị đúng địa chỉ Standby của thiết bị phụ (\texttt{MAIN-CORE-SW2}, \texttt{DBP-R2}, \texttt{BHTQ-R2}). Không có nhóm nào bị kẹt ở trạng thái \texttt{Speak} hay \texttt{Unknown}.
 
 \noindent Ảnh dưới đây ghi nhận trạng thái HSRP và thông tin hội tụ hiển thị trên hai switch lõi; phạm vi kết luận giới hạn ở những thiết bị và VLAN nhìn thấy trong ảnh.
 \begin{figure}[H]
     \centering
     \captionsetup{skip=10pt}
     \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/HA_01.png}
-    \caption{HA-01: trạng thái HSRP trên Core-SW1 và Core-SW2}
+    \caption{HA-01: trạng thái HSRP trên MAIN-CORE-SW1 và MAIN-CORE-SW2}
     \label{fig:demo-ha-01}
 \end{figure}
 \begin{figure}[H]
     \centering
     \captionsetup{skip=10pt}
     \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/HA_01.1.png}
-    \caption{HA-01.1: log chuyển trạng thái HSRP và hội tụ OSPF trên switch lõi}
+    \caption{HA-01.1: sơ đồ và ping liên tục từ MAIN-PC-STAFFA tới 10.10.50.12, có gián đoạn rồi phục hồi}
     \label{fig:demo-ha-01-1}
 \end{figure}
 
@@ -340,34 +344,34 @@ BHTQ-R1(config-if)# no shutdown
 Bấm \texttt{Alt + D}. Điểm ưu tiên của \texttt{BHTQ-R1} tự động tăng trở lại $110$. Nhờ lệnh cấu hình \texttt{standby preempt}, \texttt{BHTQ-R1} giành lại vai trò \texttt{Active Gateway}. OSPF thiết lập lại quan hệ láng giềng \texttt{FULL} với \texttt{Carrier-R} và đưa đường đi tối ưu (Cost 10) vào bảng định tuyến. Hệ thống tự động phục hồi hoàn toàn mà không cần bất kỳ can thiệp thủ công nào từ phía quản trị viên.
 
 \subsubsection{Ảnh bổ sung từ các lần kiểm tra kết nối và dự phòng}
-Các ảnh dưới đây là những phiên kiểm tra riêng, không phải tất cả đều mô tả đúng kịch bản BHTQ ở trên. WAN-01 ghi nhận MAIN-PC-STAFFA ping \texttt{10.10.50.12}, có khoảng mất gói trong khoảng thời gian hiển thị rồi nhận phản hồi trở lại. WAN-02, WAN-03 và HA-02.1/HA-02.2 hiển thị CLI của DBP-R2 cùng các lần ping tới \texttt{10.10.40.10} và trạng thái HSRP; các ảnh này không tự chứng minh đường đi dự phòng cụ thể hoặc toàn bộ thời gian gián đoạn.
+Các ảnh dưới đây là những phiên kiểm tra riêng, không phải tất cả đều mô tả đúng kịch bản BHTQ ở trên. HA-01.1 ghi nhận MAIN-PC-STAFFA ping liên tục tới \texttt{10.10.50.12}, có khoảng mất gói trong khoảng thời gian hiển thị rồi nhận phản hồi trở lại. WAN-01 ghi nhận MAIN-PC-STAFFA ping \texttt{10.30.30.10} và \texttt{10.20.10.18} đều thành công; WAN-02 ghi nhận BHTQ-PC3 ping \texttt{10.10.10.50} thành công; WAN-03 ghi nhận DBP-PC1 ping \texttt{10.20.30.14} (lần đầu mất 1/4 gói) và \texttt{10.10.10.50}. HA-02.1 và HA-02.2 hiển thị CLI của DBP-R2 cùng log HSRP và các lần ping tới \texttt{10.10.40.10}; các ảnh này không tự chứng minh đường đi dự phòng cụ thể hoặc toàn bộ thời gian gián đoạn.
 
 \begin{figure}[H]
     \centering
     \captionsetup{skip=10pt}
     \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/WAN_01.png}
-    \caption{WAN-01: ping liên tục từ MAIN-PC-STAFFA tới 10.10.50.12, có gián đoạn rồi phản hồi trở lại}
+    \caption{WAN-01: MAIN-PC-STAFFA ping 10.30.30.10 và 10.20.10.18, đều nhận đủ 4/4 phản hồi}
     \label{fig:demo-wan-01}
 \end{figure}
 \begin{figure}[H]
     \centering
     \captionsetup{skip=10pt}
     \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/WAN_02.png}
-    \caption{WAN-02: DBP-R2 ping 10.10.40.10, lần thử đầu mất gói và lần sau nhận đủ phản hồi}
+    \caption{WAN-02: BHTQ-PC3 ping 10.10.10.50 nhận đủ 4/4 phản hồi và cấu hình IP của máy}
     \label{fig:demo-wan-02}
 \end{figure}
 \begin{figure}[H]
     \centering
     \captionsetup{skip=10pt}
     \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/WAN_03.png}
-    \caption{WAN-03: trạng thái HSRP và ping từ DBP-R2 tới 10.10.40.10}
+    \caption{WAN-03: DBP-PC1 ping 10.20.30.14 (lần đầu mất 1/4 gói) và 10.10.10.50 nhận đủ phản hồi}
     \label{fig:demo-wan-03}
 \end{figure}
 \begin{figure}[H]
     \centering
     \captionsetup{skip=10pt}
     \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/HA_02.1.png}
-    \caption{HA-02.1: trạng thái HSRP và kiểm tra kết nối từ DBP-R2}
+    \caption{HA-02.1: log HSRP/OSPF khi khởi động và ping 10.10.40.10 từ DBP-R2 (lần đầu 3/5, lần sau 5/5)}
     \label{fig:demo-ha-02-1}
 \end{figure}
 \begin{figure}[H]
@@ -382,23 +386,23 @@ Các ảnh dưới đây là những phiên kiểm tra riêng, không phải t�
 \subsubsection{Thử nghiệm 4.1: Đứt 1 liên kết vật lý trong bó cáp}
 \begin{enumerate}
     \item Thiết lập lệnh \texttt{ping 10.10.40.10 -t} từ máy trạm \texttt{PC\_DATA} (\texttt{Access-A} thuộc VLAN 10).
-    \item Ngắt cổng \texttt{FastEthernet0/2} trên \texttt{Core-SW1} (một trong hai sợi cáp tạo nên Port-channel 1 nối sang \texttt{Core-SW2}):
+    \item Ngắt cổng \texttt{FastEthernet0/2} trên \texttt{MAIN-CORE-SW1} (một trong hai sợi cáp tạo nên Port-channel 1 nối sang \texttt{MAIN-CORE-SW2}):
     \begin{lstlisting}[language=csh]
-Core-SW1(config)# interface FastEthernet0/2
-Core-SW1(config-if)# shutdown
+MAIN-CORE-SW1(config)# interface FastEthernet0/2
+MAIN-CORE-SW1(config-if)# shutdown
     \end{lstlisting}
     \item \textbf{Hiện tượng ghi nhận:} Màn hình ping phản hồi liên tục, \textbf{tỷ lệ mất gói tin đạt 0\% (Zero Packet Loss)}. Giao thức IEEE 802.3ad LACP tự động tái cân bằng và dồn toàn bộ lưu lượng truyền dẫn qua sợi cáp vật lý còn lại (\texttt{FastEthernet0/7}) trong thời gian dưới $10\text{ ms}$.
 \end{enumerate}
 
-\subsubsection{Thử nghiệm 4.2: Sự cố sập toàn bộ Switch Lõi chính Core-SW1}
+\subsubsection{Thử nghiệm 4.2: Sự cố sập toàn bộ Switch Lõi chính MAIN-CORE-SW1}
 \begin{enumerate}
-    \item Giả lập kịch bản thảm họa: Tắt nguồn hoặc ngắt toàn bộ các cổng mạng trên \texttt{Core-SW1}.
+    \item Giả lập kịch bản thảm họa: Tắt nguồn hoặc ngắt toàn bộ các cổng mạng trên \texttt{MAIN-CORE-SW1}.
     \item \textbf{Cơ chế phản ứng tự động:}
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item Mất tín hiệu HSRP Hello từ \texttt{Core-SW1}, bộ định thời Holdtime ($10\text{s}$) trên \texttt{Core-SW2} hết hạn. \texttt{Core-SW2} lập tức chuyển sang trạng thái \textbf{\texttt{Active}} cho toàn bộ 9 VLAN nội bộ.
-        \item Đồng thời, tuyến đường chuyển tiếp dự phòng qua \textbf{VLAN 253} (\texttt{Inside-Backup}: \texttt{10.10.253.2} $\rightarrow$ \texttt{10.10.253.1} trên cổng Gi1/5 của tường lửa \texttt{ASA1}) được kích hoạt để đưa lưu lượng ra ngoài WAN và Internet.
+        \item Mất tín hiệu HSRP Hello từ \texttt{MAIN-CORE-SW1}, bộ định thời Holdtime ($10\text{s}$) trên \texttt{MAIN-CORE-SW2} hết hạn. \texttt{MAIN-CORE-SW2} lập tức chuyển sang trạng thái \textbf{\texttt{Active}} cho toàn bộ 9 VLAN nội bộ.
+        \item Đồng thời, tuyến đường chuyển tiếp dự phòng qua \textbf{VLAN 253} (\texttt{Inside-Backup}: \texttt{10.10.253.2} $\rightarrow$ \texttt{10.10.253.1} trên cổng Gi1/5 của tường lửa \texttt{MAIN-FW-01}) được thiết kế để đưa lưu lượng ra ngoài WAN và Internet khi liên kết này ở trạng thái up. Lưu ý: sơ đồ ghi nhận liên kết \texttt{MAIN-CORE-SW2} -- \texttt{MAIN-FW-01} đang down, nên cơ chế dự phòng này chưa được kiểm chứng.
     \end{itemize}
-    \item \textbf{Kết quả:} Toàn bộ hoạt động khám chữa bệnh, truy xuất phim X-quang/MRI trên hệ thống PACS tại Bệnh viện vẫn duy trì liên tục, bảo đảm an toàn sinh mạng người bệnh.
+    \item \textbf{Kết quả mong đợi:} Toàn bộ hoạt động khám chữa bệnh, truy cập các dịch vụ của Server Farm tại Bệnh viện vẫn duy trì liên tục, bảo đảm an toàn sinh mạng người bệnh.
 \end{enumerate}
 
 \subsection{Giai đoạn 5: Tổng kết nghiệm thu}
