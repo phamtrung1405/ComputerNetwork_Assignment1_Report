@@ -1,82 +1,32 @@
-\section{Hướng dẫn mở file và thiết lập môi trường mô phỏng}
-\label{sec:simulation_guide}
 
-\subsection{Yêu cầu hệ thống và môi trường phần mềm}
-Để đảm bảo toàn bộ kiến trúc mạng doanh nghiệp đa chi nhánh của Bệnh viện Đa khoa Quốc tế được tái hiện chính xác, không phát sinh lỗi phân tích cú pháp lệnh (CLI parsing errors) hoặc lỗi giả lập giao thức tầng liên kết dữ liệu và mạng, môi trường thử nghiệm cần đáp ứng nghiêm ngặt các tiêu chuẩn kỹ thuật sau:
+\section{Yêu cầu hệ thống và môi trường phần mềm}
 \begin{itemize}[noitemsep,topsep=2pt]
-    \item \textbf{Phần mềm mô phỏng:} \textit{Cisco Packet Tracer} phiên bản \textbf{8.2.0} trở lên (khuyến nghị phiên bản 8.2.1 hoặc 8.2.2 64-bit). Phiên bản này cung cấp hạt nhân mô phỏng nâng cao, hỗ trợ đầy đủ hệ điều hành tường lửa Cisco ASA OS 9.6(1) trên dòng thiết bị Cisco ASA 5506-X, hệ điều hành Cisco IOS 15.1(4)M4 trên Router ISR 2911, và tính năng chuyển mạch đa tầng Layer 3 trên Switch Catalyst 3560/3650.
-    \item \textbf{Yêu cầu phần cứng máy trạm điều khiển mô phỏng:} Bộ vi xử lý tối thiểu 4 nhân vật lý (x86-64, xung nhịp $\ge 2.5\text{ GHz}$), bộ nhớ RAM khả dụng tối thiểu $8\text{ GB}$ (khuyến nghị $16\text{ GB}$ để xử lý đồng thời luồng sự kiện phân tán của 25 thiết bị mạng), và độ phân giải màn hình tối thiểu $1920 \times 1080$ để quan sát toàn diện không gian hình học của mô hình.
-    \item \textbf{Hệ điều hành tương thích:} Microsoft Windows 10/11 Pro 64-bit hoặc Ubuntu LTS 22.04/24.04 LTS.
+    \item \textbf{Phần mềm mô phỏng:} \textit{Cisco Packet Tracer} phiên bản \textbf{9.0.1}. 
+    \item \textbf{Hệ điều hành tương thích:} Microsoft Windows 10/11 Pro 64-bit
 \end{itemize}
 
-\subsection{Quy trình mở file và các bước khởi tạo môi trường}
-Các thao tác nạp tệp thiết kế và chuẩn bị hệ thống phục vụ công tác đánh giá và nghiệm thu kỹ thuật được chuẩn hóa qua 4 bước:
-\begin{enumerate}
-    \item \textbf{Khởi chạy ứng dụng:} Mở phần mềm Cisco Packet Tracer với quyền quản trị viên (\textit{Run as Administrator}) nhằm cấp quyền tối đa cho tiến trình socket nội bộ của bộ mô phỏng.
-    \item \textbf{Nạp tệp mô phỏng:} Trên thanh công cụ chính, chọn \textbf{File $\rightarrow$ Open} (hoặc sử dụng tổ hợp phím tắt \texttt{Ctrl + O}), điều hướng tới thư mục lưu trữ và chọn tệp thiết kế phiên bản nghiệm thu chuẩn:
-    \begin{center}
-        \texttt{Enterprise\_MultiSite\_Hospital\_Network\_v2.0\_Final.pkt}
-    \end{center}
-    \item \textbf{Đồng bộ không gian làm việc:} Chuyển vùng nhìn sang chế độ \textbf{Logical Workspace}. Phóng to toàn cảnh (Zoom Fit) để kiểm tra tổng quan 4 phân vùng chính: \textit{Trụ sở chính (Main Site - HCMC)}, \textit{Vùng phân tầng DMZ \& Biên Internet}, \textit{Hạ tầng truyền dẫn WAN cốt lõi}, và \textit{Hai phân hiệu chi nhánh (Chi nhánh DBP \& Chi nhánh BHTQ)}.
-\end{enumerate}
 
-\subsection{Cơ chế hội tụ giao thức và kỹ thuật tua nhanh thời gian (Fast Forward Time)}
-Trong lý thuyết mạng máy tính và thực nghiệm viễn thông, khi một hệ thống quy mô lớn gồm 25 thiết bị mạng khởi động đồng thời, các giao thức phân tán đòi hỏi khoảng thời gian trễ nhất định để trao đổi các bản tin điều khiển và hoàn tất quá trình hội tụ trạng thái (Convergence State):
-\begin{itemize}[noitemsep,topsep=2pt]
-    \item \textbf{Giao thức cây bao trùm (Rapid-PVST+):} Cần từ 3 đến 6 giây để hoàn tất bầu chọn Root Bridge và chuyển trạng thái cổng từ \textit{Discarding/Learning} sang \textit{Forwarding}.
-    \item \textbf{Bó liên kết động LACP (802.3ad EtherChannel):} Cần từ 5 đến 10 giây để trao đổi các gói tin LACPDU và đồng bộ trạng thái \textit{Channel-Group 1} giữa \texttt{Core-SW1} và \texttt{Core-SW2}.
-    \item \textbf{Giao thức dự phòng cổng vào đầu tiên (HSRP Group 10--250):} Các router/switch đa tầng cần chu kỳ Hello ($3\text{ giây}$) và Holdtime ($10\text{ giây}$) để chuyển từ trạng thái \textit{Initial/Speak} sang \textit{Active} và \textit{Standby}.
-    \item \textbf{Giao thức định tuyến động OSPFv2 (Area 0):} Đòi hỏi từ 30 đến 40 giây (chu kỳ Dead Interval $40\text{ giây}$ trên các mạng đa truy cập Broadcast) để trao đổi bản tin Hello, thiết lập quan hệ láng giềng \textit{2-Way}, bầu chọn DR/BDR, đồng bộ cơ sở dữ liệu trạng thái đường liên kết (LSDB) qua các bản tin DBD/LSR/LSU, và đạt trạng thái toàn vẹn \textbf{FULL}.
-\end{itemize}
-\begin{tcolorbox}[colback=blue!5!white,colframe=blue!60!black,title=\textbf{Quy trình kích hoạt hội tụ nhanh (Fast Forward Time)}]
-Nhằm tránh tình trạng rớt gói tin đầu tiên do bảng chuyển tiếp L2 (CAM Table) và bảng định tuyến L3 (RIB/FIB) chưa hoàn thiện, chuyên viên kiểm thử thực hiện bấm tổ hợp phím tắt \textbf{\texttt{Alt + D}} (hoặc nhấp chuột vào biểu tượng nút \textit{Fast Forward Time} màu cam ở góc dưới bên trái thanh trạng thái) liên tục từ \textbf{2 đến 3 lần}. Quan sát thấy toàn bộ các điểm nút liên kết chuyển trạng thái từ màu cam sang hình \textbf{tam giác xanh lá cây vững định}, xác nhận hệ thống đã hoàn toàn hội tụ.
-\end{tcolorbox}
-
-\subsection{Thông tin xác thực và kiểm soát truy cập thiết bị}
-Toàn bộ hệ thống tuân thủ mô hình bảo mật AAA phân tầng và phòng vệ theo chiều sâu (Defense-in-Depth). Thông tin truy cập được quy định thống nhất như sau:
-\begin{itemize}[noitemsep,topsep=2pt]
-    \item \textbf{Cấp độ đặc quyền cục bộ (Console / Privileged Exec):} Giá trị \texttt{enable secret} đã được lược khỏi báo cáo. Cấu hình vận hành phải dùng mật khẩu riêng, đủ mạnh; không dùng mật khẩu mặc định hoặc mật khẩu dùng chung.
-    \item \textbf{Giao thức quản trị từ xa bảo mật (In-band SSH Management):} Mô hình dùng SSH Version 2 (\texttt{ip ssh version 2}); khóa RSA 1024-bit chỉ dùng cho mô phỏng, môi trường thực tế cần nâng lên tối thiểu 2048-bit. Thông tin tài khoản được ẩn:
-    \begin{center}
-        Tên đăng nhập: \textbf{\texttt{[ADMIN\_USER]}} \quad | \quad Mức đặc quyền: \textbf{\texttt{privilege 15}} \quad | \quad Mật khẩu: \textbf{\texttt{[REDACTED]}}
-    \end{center}
-    \item \textbf{Bảo vệ mặt phẳng quản trị (Management Plane Protection - MPP):} Nhằm triệt tiêu nguy cơ tấn công dò quét cổng hoặc leo thang đặc quyền từ các phân vùng người dùng nội bộ, cổng ảo VTY (0--15) trên toàn bộ thiết bị lõi đều được siết chặt bởi danh sách kiểm soát truy cập \texttt{access-class 10 in}. Chỉ duy nhất trạm nhảy quản trị được định danh (\textbf{Jump Host}) tại địa chỉ IP tĩnh \textbf{\texttt{10.10.90.30}} (thuộc VLAN 90 Management) mới được phép thiết lập phiên làm việc SSH. Mọi nỗ lực truy cập từ các phân vùng khác đều bị hủy bỏ ngay tại tầng giao vận TCP Port 22.
-\end{itemize}
-
-\subsection{Quy chuẩn quản lý phiên bản và an toàn dữ liệu (Snapshot \& Rollback)}
-Trong suốt quá trình kiểm thử chịu lỗi và bơm sự cố (Fault Injection Testing), chuyên viên kỹ thuật bắt buộc tuân thủ quy trình an toàn dữ liệu:
-\begin{enumerate}
-    \item \textbf{Tạo bản sao lưu độc lập (Snapshot):} Trước khi thực hiện bất kỳ lệnh ngắt cổng (\texttt{shutdown}) hoặc can thiệp bảng định tuyến, lưu tệp thành một bản sao mới thông qua \textbf{File $\rightarrow$ Save As...} (ví dụ: \texttt{Enterprise\_MultiSite\_Demo\_FailureScenarios.pkt}).
-    \item \textbf{Quy trình hoàn nguyên trạng thái (Rollback Protocol):} Sau khi kiểm chứng xong kịch bản failover, thực hiện mở lại giao diện vật lý bằng lệnh \texttt{no shutdown}, kích hoạt lại quá trình hội tụ và kiểm tra bảng định tuyến.
-    \item \textbf{Ghi nhận cấu hình chuẩn (Golden Config Archival):} Khi hệ thống trở về trạng thái ổn định lý tưởng, thực hiện lưu cấu hình từ bộ nhớ RAM tạm thời (\textit{running-config}) vào bộ nhớ bất biến NVRAM (\textit{startup-config}) trên toàn bộ thiết bị bằng lệnh:
-    \begin{center}
-        \texttt{Router\# copy running-config startup-config} \quad (hoặc cú pháp rút gọn \texttt{write memory})
-    \end{center}
-\end{enumerate}
-
-\newpage
 \section{Kiến trúc Topology và các giả định thiết kế}
-\label{sec:topology_assumptions}
 
 \subsection{Tổng quan kiến trúc mạng bệnh viện đa chi nhánh}
-Dự án được thiết kế chuyên biệt cho hệ thống công nghệ thông tin y tế của một \textbf{Bệnh viện Đa khoa Chuyên sâu} theo đúng đề bài Assignment 2, đòi hỏi độ tin cậy tuyệt đối (tính sẵn sàng đạt 99.999\% - chuẩn Five Nines), đảm bảo lưu thông thông suốt cho các hệ thống phần mềm quản lý bệnh viện (HIS), hệ thống lưu trữ và truyền hình ảnh y khoa dung lượng lớn (RIS-PACS), hệ thống xét nghiệm (LIS), cơ sở dữ liệu y bạ điện tử (EMR) và giám sát an ninh camera IP.
+Dự án được thiết kế chuyên biệt cho hệ thống công nghệ thông tin y tế của một Bệnh viện theo đúng đề bài Assignment 2, đòi hỏi độ tin cậy cao, đảm bảo lưu thông thông suốt cho các hệ thống phần mềm quản lý bệnh viện, hệ thống lưu trữ và truyền hình ảnh y khoa dung lượng lớn, hệ thống xét nghiệm, cơ sở dữ liệu y bạ điện tử và giám sát an ninh camera IP.
 
-Mô hình mạng tích hợp cấu trúc phân cấp chuẩn của Cisco (3-Tier Hierarchical Network Design: Core -- Distribution -- Access) kết hợp với mô hình bảo mật đa vùng (Multi-zone Security Model). Hệ thống gồm tổng cộng \textbf{25 thiết bị mạng chuyên dụng} được bố trí trên 4 phân vùng chiến lược:
+Mô hình mạng tích hợp cấu trúc phân cấp chuẩn của Cisco kết hợp với mô hình bảo mật đa vùng. Hệ thống gồm tổng cộng 25 thiết bị mạng chuyên dụng được bố trí trên 4 phân vùng chiến lược:
 \begin{enumerate}
-    \item \textbf{Trụ sở chính (Main Site - HCMC):} Gồm 2 tòa nhà chức năng lớn A và B (mỗi tòa 5 tầng, 10 phòng/tầng, phục vụ trên 600 máy trạm người dùng), Trung tâm dữ liệu (Server Farm) và Trung tâm điều hành cáp mạng IT đặt cách xa 50 mét. Hệ thống chuyển mạch trung tâm gồm cụm chuyển mạch đa tầng đối xứng \texttt{Core-SW1} (HSRP Active) và \texttt{Core-SW2} (HSRP Standby) kết nối với 5 switch phân phối/truy cập chuyên trách: \texttt{Server-SW}, \texttt{Mgmt-SW}, \texttt{Cam-SW}, \texttt{Access-A}, và \texttt{Access-B}.
-    \item \textbf{Vùng biên, Phân tầng DMZ \& Cổng Internet:} Kiến trúc phòng vệ kép sử dụng 2 tường lửa thế hệ mới Cisco ASA:
+    \item \textbf{Trụ sở chính (Main Site - HCMC):} Gồm 2 tòa nhà chức năng lớn A và B (mỗi tòa 5 tầng, 10 phòng/tầng, phục vụ trên 600 máy trạm người dùng), Trung tâm dữ liệu (Server Farm) và Trung tâm điều hành cáp mạng IT đặt cách xa 50 mét. Hệ thống chuyển mạch trung tâm gồm cụm chuyển mạch đa tầng đối xứng....
+    \item \textbf{Vùng biên, Phân tầng DMZ \& Cổng Internet:} Kiến trúc phòng vệ kép sử dụng 2 tường lửa Cisco ASA:
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item \textbf{\texttt{ASA1} (Tường lửa phân tách nội bộ và WAN):} Phân chia ranh giới tin cậy cao giữa mạng Core nội bộ (Security Level 100) với mạng WAN chính (Security Level 70), WAN dự phòng (Security Level 60), và vùng đệm DMZ (Security Level 50).
-        \item \textbf{\texttt{ASA2} (Tường lửa biên Internet):} Đảm trách chức năng bảo vệ vùng DMZ (Security Level 50), thực hiện Static NAT công khai cổng thông tin y tế bệnh viện ra Internet (Security Level 0) và Dynamic PAT cho các máy trạm nội bộ duyệt Web ra ngoài thông qua router biên \texttt{ISP1-R}.
-        \item Cụm thiết bị hỗ trợ vùng biên gồm Switch Layer 3 \texttt{DMZ-SW}, Switch phân phối \texttt{WAN1-SW}, \texttt{WAN2-SW}, và hai router biên WAN trung tâm \texttt{WAN-R1}, \texttt{WAN-R2}.
+        \item \textbf{\texttt{ASA1} (Tường lửa phân tách nội bộ và WAN):} Phân chia ranh giới tin cậy cao giữa mạng Core nội bộ với mạng WAN chính, WAN dự phòng, và vùng đệm DMZ.
+        \item \textbf{\texttt{ASA2} (Tường lửa biên Internet):} Đảm trách chức năng bảo vệ vùng DMZ, thực hiện Static NAT công khai cổng thông tin y tế bệnh viện ra Internet và Dynamic PAT cho các máy trạm nội bộ duyệt Web ra ngoài thông qua router biên \texttt{ISP1-R}.
+        \item Cụm thiết bị hỗ trợ vùng biên gồm Switch Layer 3 \texttt{DMZ-SW}, Switch phân phối \texttt{MAIN-WAN-SW1}, \texttt{MAIN-WAN-SW2}, và hai router biên WAN trung tâm \texttt{MAIN-WAN-R1}, \texttt{MAIN-WAN-R2}.
     \end{itemize}
     \item \textbf{Hạ tầng truyền dẫn WAN cốt lõi (WAN Backbone):}
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item \textbf{\texttt{Carrier-R}:} Đại diện cho mạng viễn thông đường trục (Leased Line / MPLS L3VPN tốc độ cao), chạy định tuyến động OSPF Area 0 với trọng số chi phí ưu tiên tối đa (\texttt{ip ospf cost 10}).
-        \item \textbf{\texttt{ISP2-R}:} Đại diện cho mạng cáp quang băng thông rộng phụ trợ (Broadband/FTTH/xDSL), vận hành cơ chế định tuyến tĩnh thả nổi (Floating Static Route có Administrative Distance $\text{AD} = 150$) đóng vai trò đường truyền cứu sinh khi kênh Leased Line đứt kết nối.
+        \item \textbf{\texttt{Carrier-R}:} Đại diện cho mạng viễn thông đường trục, chạy định tuyến động OSPF Area 0 với trọng số chi phí ưu tiên tối đa.
+        \item \textbf{\texttt{ISP2-R}:} Đại diện cho mạng cáp quang băng thông rộng phụ trợ (Broadband/FTTH/xDSL), vận hành cơ chế định tuyến tĩnh thả nổi đóng vai trò đường truyền cứu sinh khi kênh Leased Line đứt kết nối.
     \end{itemize}
-    \item \textbf{Chi nhánh Phụ 1 (Chi nhánh Điện Biên Phủ - DBP):} Tòa nhà 2 tầng (260 máy trạm, 2 máy chủ cục bộ), trang bị cụm Router dự phòng cổng vào kép \texttt{DBP-R1} (Active) và \texttt{DBP-R2} (Standby) kết nối lớp truy cập qua \texttt{DBP-SW1} và \texttt{DBP-SW2}.
-    \item \textbf{Chi nhánh Phụ 2 (Chi nhánh Bà Huyện Thanh Quan - BHTQ):} Quy mô tương đương Chi nhánh 1, vận hành cặp router \texttt{BHTQ-R1} (Active) và \texttt{BHTQ-R2} (Standby) cùng 2 switch phân phối tầng \texttt{BHTQ-SW1} và \texttt{BHTQ-SW2}.
+    \item \textbf{Chi nhánh Phụ 1 (DBP):} Tòa nhà 2 tầng (260 máy trạm, 2 máy chủ cục bộ), trang bị cụm Router dự phòng cổng vào kép \texttt{DBP-R1} (Active) và \texttt{DBP-R2} (Standby) kết nối lớp truy cập qua \texttt{DBP-SW1} và \texttt{DBP-SW2}.
+    \item \textbf{Chi nhánh Phụ 2 (BHTQ):} Quy mô tương đương Chi nhánh 1, vận hành cặp router \texttt{BHTQ-R1} (Active) và \texttt{BHTQ-R2} (Standby) cùng 2 switch phân phối tầng \texttt{BHTQ-SW1} và \texttt{BHTQ-SW2}.
 \end{enumerate}
 
 \subsection{Bảng danh mục thiết bị và vai trò trong hệ thống}
@@ -103,20 +53,20 @@ Bảng~\ref{tab:device_inventory} tổng hợp thông số kỹ thuật, định
 \hline
 \endlastfoot
 
-\texttt{Core-SW1} & Catalyst 3560-24PS & Main Site (Core) & HSRP Active (Prio 200), STP Root Bridge (Prio 4096), OSPF RID 2.2.2.1, LACP Port-channel 1, DHCP Relay. \\ \hline
-\texttt{Core-SW2} & Catalyst 3560-24PS & Main Site (Core) & HSRP Standby (Prio 150), STP Secondary Root (Prio 8192), OSPF RID 2.2.2.2, Tuyến dự phòng VLAN 253 lên ASA1. \\ \hline
-\texttt{Server-SW} & Catalyst 2960-24TT & Main Site (Data Center) & Phân phối Layer 2 kết nối Cụm máy chủ HIS/PACS/DNS/DHCP tại VLAN 40. \\ \hline
-\texttt{Mgmt-SW} & Catalyst 2960-24TT & Main Site (IT Room) & Kết nối trạm nhảy Jump Host (10.10.90.30) và Syslog/NTP (10.10.90.20) thuộc VLAN 90. \\ \hline
-\texttt{Cam-SW} & Catalyst 2960-24TT & Main Site (Security) & Phân phối hạ tầng giám sát an ninh tập trung VLAN 70 (Camera IP chuyên dụng). \\ \hline
-\texttt{Access-A} & Catalyst 2960-24TT & Main Site (Tòa nhà A) & Switch truy cập tầng phục vụ máy trạm Bác sĩ, Nhân viên và AP Khách (VLAN 10, 60, 80). \\ \hline
-\texttt{Access-B} & Catalyst 2960-24TT & Main Site (Tòa nhà B) & Switch truy cập tầng phục vụ Khối hành chính, Bệnh án và WiFi (VLAN 20, 60). \\ \hline
-\texttt{ASA1} & Cisco ASA 5506-X & Main Site (Internal FW) & Phân tách 5 vùng an ninh: inside (100), inside-backup (100), wan (70), backup-wan (60), dmz (50). \\ \hline
-\texttt{ASA2} & Cisco ASA 5506-X & Main Site (Edge FW) & Tường lửa biên Internet; Static NAT cho Web Server DMZ, Dynamic PAT cho mạng nội bộ ra ngoài. \\ \hline
-\texttt{DMZ-SW} & Catalyst 3560-24PS & Phân tầng DMZ & Chuyển mạch Layer 3 trung chuyển giữa ASA1, ASA2 và Web Server bệnh viện (10.10.50.10). \\ \hline
-\texttt{WAN1-SW} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN chính giữa cổng Gi1/2 của ASA1 và WAN-R1. \\ \hline
-\texttt{WAN2-SW} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN phụ giữa cổng Gi1/1 của ASA1 và WAN-R2. \\ \hline
-\texttt{WAN-R1} & Cisco 2911 ISR & Main Site (WAN Edge) & Router biên Leased Line chính: OSPF Area 0, OSPF Cost 10, kết nối trực tiếp Carrier-R qua Serial0/3/0. \\ \hline
-\texttt{WAN-R2} & Cisco 2911 ISR & Main Site (WAN Edge) & Router biên Broadband phụ trợ: Định tuyến tĩnh, kết nối mạng dự phòng ISP2-R qua Serial0/3/1. \\ \hline
+\texttt{MAIN-Core-SW1} & Catalyst 3560-24PS & Main Site (Core) & HSRP Active (Prio 200), STP Root Bridge (Prio 4096), OSPF RID 2.2.2.1, LACP Port-channel 1, DHCP Relay. \\ \hline
+\texttt{MAIN-Core-SW2} & Catalyst 3560-24PS & Main Site (Core) & HSRP Standby (Prio 150), STP Secondary Root (Prio 8192), OSPF RID 2.2.2.2, Tuyến dự phòng VLAN 253 lên ASA1. \\ \hline
+\texttt{MAIN-Server-SW} & Catalyst 2960-24TT & Main Site (Data Center) & Phân phối Layer 2 kết nối Cụm máy chủ HIS/PACS/DNS/DHCP tại VLAN 40. \\ \hline
+\texttt{MAIN-Mgmt-SW} & Catalyst 2960-24TT & Main Site (IT Room) & Kết nối trạm nhảy Jump Host (10.10.90.30) và Syslog/NTP (10.10.90.20) thuộc VLAN 90. \\ \hline
+\texttt{MAIN-Cam-SW} & Catalyst 2960-24TT & Main Site (Security) & Phân phối hạ tầng giám sát an ninh tập trung VLAN 70 (Camera IP chuyên dụng). \\ \hline
+\texttt{MAIN-Access-A} & Catalyst 2960-24TT & Main Site (Tòa nhà A) & Switch truy cập tầng phục vụ máy trạm Bác sĩ, Nhân viên và AP Khách (VLAN 10, 60, 80). \\ \hline
+\texttt{MAIN-Access-B} & Catalyst 2960-24TT & Main Site (Tòa nhà B) & Switch truy cập tầng phục vụ Khối hành chính, Bệnh án và WiFi (VLAN 20, 60). \\ \hline
+\texttt{MAIN-ASA1} & Cisco ASA 5506-X & Main Site (Internal FW) & Phân tách 5 vùng an ninh: inside (100), inside-backup (100), wan (70), backup-wan (60), dmz (50). \\ \hline
+\texttt{MAIN-ASA2} & Cisco ASA 5506-X & Main Site (Edge FW) & Tường lửa biên Internet; Static NAT cho Web Server DMZ, Dynamic PAT cho mạng nội bộ ra ngoài. \\ \hline
+\texttt{MAIN-DMZ-SW} & Catalyst 3560-24PS & Phân tầng DMZ & Chuyển mạch Layer 3 trung chuyển giữa ASA1, ASA2 và Web Server bệnh viện (10.10.50.10). \\ \hline
+\texttt{MAIN-WAN-SW1} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN chính giữa cổng Gi1/2 của ASA1 và WAN-R1. \\ \hline
+\texttt{MAIN-WAN-SW2} & Catalyst 2960-24TT & Vùng biên WAN & Switch chuyển tiếp lưu lượng tuyến WAN phụ giữa cổng Gi1/1 của ASA1 và WAN-R2. \\ \hline
+\texttt{MAIN-WAN-R1} & Cisco 2911 ISR & Main Site (WAN Edge) & Router biên Leased Line chính: OSPF Area 0, OSPF Cost 10, kết nối trực tiếp Carrier-R qua Serial0/3/0. \\ \hline
+\texttt{MAIN-WAN-R2} & Cisco 2911 ISR & Main Site (WAN Edge) & Router biên Broadband phụ trợ: Định tuyến tĩnh, kết nối mạng dự phòng ISP2-R qua Serial0/3/1. \\ \hline
 \texttt{ISP1-R} & Cisco 2911 ISR & Mạng Internet Public & Router đại diện nhà cung cấp dịch vụ Internet, cấp dải địa chỉ Public 203.162.10.0/29. \\ \hline
 \texttt{Carrier-R}& Cisco 2911 ISR & Trục đường truyền chính & Backbone Leased Line / MPLS viễn thông: OSPF Area 0, liên kết điểm--điểm tốc độ cao tới 3 Site. \\ \hline
 \texttt{ISP2-R} & Cisco 2911 ISR & Trục đường truyền phụ & Mạng FTTH/Broadband công cộng: Cung cấp kênh dự phòng cho các tuyến WAN chi nhánh. \\ \hline
@@ -179,17 +129,17 @@ VLAN 253 & Inside Backup & \texttt{10.10.253.0/29}& Giao diện điểm--điểm
 \end{longtable}
 \end{small}
 
-\subsection{Các giả định khoa học và ràng buộc kỹ thuật trong thiết kế}
+\subsection{Các giả định và ràng buộc kỹ thuật}
 Dưới góc độ nghiên cứu khoa học và kỹ thuật mạng thực chiến, mô hình được xây dựng trên 4 giả định nền tảng:
 \begin{enumerate}
-    \item \textbf{Giả định về phân tầng đặc tính kênh truyền WAN (Carrier Leased Line vs. Broadband):}
+    \item \textbf{Giả định về phân tầng đặc tính kênh truyền WAN}
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item Kênh chính qua \texttt{Carrier-R} được giả định là đường truyền cam kết băng thông và độ trễ thấp (CIR = $100\text{ Mbps}$, Latency $\le 5\text{ ms}$, Jitter $\le 1\text{ ms}$ tương đương công nghệ MPLS VPN). Do đó, giao thức định tuyến OSPFv2 được gán độ ưu tiên đường truyền cao nhất với cấu hình tham số \texttt{ip ospf cost 10} trên các cổng Serial.
+        \item Kênh chính qua \texttt{Carrier-R} được giả định là đường truyền cam kết băng thông và độ trễ thấp. Do đó, giao thức định tuyến OSPFv2 được gán độ ưu tiên đường truyền cao nhất với cấu hình tham số \texttt{ip ospf cost 10} trên các cổng Serial.
         \item Kênh phụ qua \texttt{ISP2-R} là đường truyền Internet băng rộng (FTTH/Broadband) có chất lượng không cam kết (Best-effort). Tuyến đường này được định cấu hình dưới dạng \textit{Floating Static Route} với chỉ số khoảng cách quản trị $\text{AD} = 150$. Vì $\text{AD}_{\text{OSPF}} = 110 < 150$, tuyến đường này hoàn toàn ở trạng thái ngủ trong điều kiện vận hành bình thường, loại bỏ triệt để hiện tượng định tuyến bất đối xứng (Asymmetric Routing) gây phá vỡ bảng trạng thái phiên (State Table) của tường lửa.
     \end{itemize}
-    \item \textbf{Giả định về mô hình dịch vụ tập trung (Centralized Healthcare Services):}
+    \item \textbf{Giả định về mô hình dịch vụ tập trung}
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item Nhằm tối ưu hóa chi phí đầu tư phần cứng và đồng bộ hóa dữ liệu y tế, toàn bộ dịch vụ cốt lõi (Cơ sở dữ liệu bệnh án điện tử HIS/RIS, dịch vụ phân giải tên miền DNS và cấp phát động DHCP) được đặt tập trung tại cụm máy chủ Data Center Main Site (\texttt{10.10.40.10}).
+        \item Nhằm tối ưu hóa chi phí đầu tư phần cứng và đồng bộ hóa dữ liệu y tế, toàn bộ dịch vụ cốt lõi được đặt tập trung tại cụm máy chủ Data Center Main Site (\texttt{10.10.40.10}).
         \item Các chi nhánh DBP và BHTQ không duy trì hệ thống máy chủ DHCP nội bộ độc lập mà sử dụng kỹ thuật chuyển tiếp bản tin DHCP Broadcast thông qua bộ tác nhân \texttt{ip helper-address 10.10.40.10} được cấu hình trên từng Subinterface của router chi nhánh.
     \end{itemize}
     \item \textbf{Giả định về chuẩn hóa đóng gói 802.1Q và cơ chế truyền thông tin Multicast:}
@@ -204,69 +154,14 @@ Dưới góc độ nghiên cứu khoa học và kỹ thuật mạng thực chi�
 
 \input{Content/security.tex}
 
-\newpage
-\section{Các tính năng chỉ mô phỏng một phần hoặc chưa kiểm chứng}
-\label{sec:limitations}
 
-\subsection{Bản chất giới hạn của công cụ Cisco Packet Tracer}
-Dưới góc nhìn khoa học thực nghiệm, cần khẳng định rõ ràng sự khác biệt về mặt bản chất giữa \textbf{Cisco Packet Tracer} và các hệ thống thiết bị mạng vật lý hoạt động trong môi trường sản xuất (Production Networks):
-\begin{itemize}[noitemsep,topsep=2pt]
-    \item \textit{Packet Tracer} là phần mềm mô phỏng theo mô hình sự kiện rời rạc (Discrete Event-driven Simulator). Mã nguồn của phần mềm chỉ trừu tượng hóa một tập hợp con hữu hạn các hàm API và hành vi giao thức mạng phổ biến, không thực thi mã nhị phân (Binary Code) nguyên bản của hệ điều hành Cisco IOS hay nhân Linux của Cisco ASA OS.
-    \item Hệ thống không sở hữu kiến trúc phần cứng chuyên dụng như bộ xử lý chuyển mạch ASIC, bộ nhớ liên kết theo nội dung bậc ba (TCAM - Ternary Content Addressable Memory), hoặc cơ chế chuyển tiếp gói tin tăng tốc bằng phần cứng Cisco Express Forwarding (CEF Hardware Switching).
-\end{itemize}
-Do đó, mặc dù toàn bộ các nguyên lý thiết kế hệ thống đều được xây dựng theo chuẩn mực khắt khe của chứng chỉ kiến trúc sư mạng Cisco (CCDE/CCIE Enterprise), một số tính năng phức tạp chỉ dừng lại ở mức \textit{mô phỏng tương đương} hoặc \textit{chưa thể kiểm chứng thực nghiệm đầy đủ} trên nền tảng phần mềm này.
-
-\subsection{Bảng phân loại chi tiết các giới hạn kỹ thuật và giải pháp thay thế}
-Bảng~\ref{tab:technical_limitations} phân loại cụ thể các tính năng bị hạn chế, phân tích nguyên nhân kỹ thuật sâu xa và giải pháp thiết kế thay thế tương đương đã được áp dụng trong bài báo cáo.
-
-\begin{small}
-\setlength{\tabcolsep}{4pt}
-\begin{longtable}{|c|p{3.0cm}|p{2.8cm}|p{7.0cm}|}
-\caption{Bảng phân loại các tính năng mô phỏng một phần hoặc chưa kiểm chứng trên Cisco Packet Tracer} \label{tab:technical_limitations} \\
-\hline
-\textbf{STT} & \textbf{Tính năng / Giao thức} & \textbf{Mức độ mô phỏng} & \textbf{Giải thích kỹ thuật \& Giải pháp kiến trúc thay thế} \\ \hline
-\endfirsthead
-
-\multicolumn{4}{c}%
-{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
-\hline
-\textbf{STT} & \textbf{Tính năng / Giao thức} & \textbf{Mức độ mô phỏng} & \textbf{Giải thích kỹ thuật \& Giải pháp kiến trúc thay thế} \\ \hline
-\endhead
-
-\hline
-\multicolumn{4}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
-\endfoot
-
-\hline
-\endlastfoot
-
-\textbf{1} & \textbf{IP SLA Tracking trên Cisco ASA} & \textbf{Mô phỏng một phần} \textit{(Thay bằng Static Route Metric)} & Hệ điều hành ASA 5506-X trên Packet Tracer không nhận diện bộ lệnh kiểm tra trạng thái chủ động \texttt{sla monitor} và \texttt{track ... rtr}. Trên thực tế sản xuất, tính năng này liên tục gửi gói tin ICMP thăm dò đầu xa để gỡ tuyến khi mất kết nối. Trong bài toán này, kiến trúc đã áp dụng cơ chế định tuyến tĩnh phân cấp độ ưu tiên Metric (\texttt{Metric 1} cho cổng \texttt{wan} và \texttt{Metric 10} cho cổng \texttt{backup-wan}) kết hợp trạng thái giao diện vật lý Link-Down. \\ \hline
-\textbf{2} & \textbf{Stateful HA Failover giữa 2 tường lửa ASA} & \textbf{Chưa kiểm chứng} \textit{(Không hỗ trợ trên simulator)} & Packet Tracer hoàn toàn không hỗ trợ giao thức đồng bộ bảng trạng thái kết nối (\texttt{conn} state và \texttt{xlate} NAT table) thông qua giao diện chuyên dụng Stateful Failover Link. Để giải quyết, mô hình tách rời thành kiến trúc phòng vệ chuyên biệt 2 lớp độc lập: \texttt{ASA1} đảm trách tường lửa nội bộ/WAN và \texttt{ASA2} bảo vệ vùng DMZ/Internet. \\ \hline
-\textbf{3} & \textbf{Chuyển kiểu mạng OSPF Point-to-Point trên Subinterface} & \textbf{Mô phỏng một phần} \textit{(Chạy mặc định Broadcast)} & Trình phân tích cú pháp IOS 15.1 của Packet Tracer báo lỗi \textit{"\% Invalid input detected"} khi nhập \texttt{ip ospf network point-to-point} trên cổng logic Subinterface \texttt{Gi0/0.99}. Do đó, hệ thống buộc phải vận hành ở chế độ mặc định \texttt{BROADCAST} (có tiến trình bầu chọn DR/BDR) với bộ định thời Hello 10s / Dead 40s. \\ \hline
-\textbf{4} & \textbf{HSRP kết hợp OSPF trên Native Subinterface} & \textbf{Giới hạn giả lập} \textit{(Cấu hình ban đầu, đã khắc phục tại BHTQ)} & Ở cấu hình ban đầu, \texttt{encapsulation dot1Q 99 native} kết hợp HSRP (\texttt{224.0.0.2}) và OSPF (\texttt{224.0.0.5}) làm khung tin điều khiển bị xử lý một chiều, khiến láng giềng OSPF kẹt ở trạng thái \texttt{INIT/}\break\texttt{DROTHER}. Tại BHTQ, cấu hình cuối bỏ từ khóa \texttt{native}, dùng \texttt{encapsulation dot1Q 99}; trunk dùng VLAN 1 làm native. Cần xác nhận tương tự tại DBP. \\ \hline
-\textbf{5} & \textbf{Định tuyến theo chính sách (PBR) \& Giao thức BFD} & \textbf{Chưa kiểm chứng} \textit{(Không hỗ trợ trên simulator)} & Packet Tracer không hỗ trợ Route-map gán next-hop linh hoạt cho PBR cũng như giao thức phát hiện đứt tuyến siêu tốc BFD ($< 50\text{ ms}$). Thời gian hội tụ dự phòng dựa hoàn toàn vào chu kỳ của HSRP ($3\text{s}/10\text{s}$) và OSPF ($10\text{s}/40\text{s}$). \\ \hline
-\textbf{6} & \textbf{Tường lửa sâu NGFW (IPS/IDS) \& TACACS+ Chi tiết} & \textbf{Mô phỏng một phần} \textit{(Áp dụng Stateful L4 \& ACL)} & Tường lửa ASA chỉ thực thi kiểm tra trạng thái phiên ở tầng L3/L4 (\texttt{inspect dns, ftp, icmp, tftp}) và mở cổng qua Extended ACL; các tính năng lọc mã độc sâu (Deep Packet Inspection), giải mã TLS/SSL và phân quyền lệnh qua giao thức TACACS+ chỉ mang tính chất thiết kế lý thuyết. \\ \hline
-\textbf{7} & \textbf{IPsec Site-to-Site VPN \& Remote Access VPN} & \textbf{Mô phỏng một phần, có ảnh minh chứng} & Ảnh \texttt{VPN\_01.1.png} ghi nhận IKE/IPsec SA hoạt động trên các peer WAN và bộ đếm gói cho peer \texttt{10.255.0.18}. Ảnh \texttt{VPN\_02.png} ghi nhận client VPN từ xa được cấp địa chỉ; \texttt{VPN\_01.png} ghi nhận client ping tới Server Farm thành công sau lần thử lại. Bằng chứng này không xác nhận mọi peer/subnet, tính sẵn sàng dự phòng, MFA hoặc mức độ bảo mật khi triển khai thực tế. \\ \hline
-\end{longtable}
-\end{small}
-
-\subsection{Đánh giá tính hợp lệ và giá trị khoa học của kết quả mô phỏng}
-Dưới phương diện phương pháp luận nghiên cứu (Research Methodology):
-\begin{itemize}[noitemsep,topsep=2pt]
-    \item \textbf{Tính hợp lệ nội tại (Internal Validity):} Kết quả mô phỏng phản ánh chính xác 100\% các thuật toán chuyển mạch tầng 2 và định tuyến tầng 3 chuẩn quốc tế (IEEE 802.1D/w STP, IEEE 802.3ad LACP, IETF RFC 2328 OSPFv2, RFC 2281 HSRP). Các bài kiểm thử đứt mạch, ngắt cổng, và hội tụ dự phòng phản ánh chân thực logic hoạt động của các máy trạng thái hữu hạn (Finite State Machines - FSM).
-    \item \textbf{Tính hợp lệ ngoại tại và khả năng chuyển giao thực tế (External Validity \& Transferability):} Toàn bộ tập lệnh cấu hình được xuất ra từ hệ thống (\texttt{running-config}) đều là các tập lệnh chuẩn của Cisco IOS và Cisco ASA Software. Khi chuyển giao mô hình này sang triển khai trên các thiết bị phần cứng thực tế (chẳng hạn như Switch Cisco Catalyst 3650/3850, Router Cisco ISR 4331/4451 và Tường lửa Cisco Firepower 2100 Series), các kỹ sư chỉ cần nạp trực tiếp tập lệnh này mà không cần thay đổi cấu trúc luận lý của mạng.
-\end{itemize}
 
 \newpage
 \section{Kịch bản demo hệ thống (System Demo Script)}
 \label{sec:demo_script}
 
-\subsection{Phương pháp luận và kế hoạch thực thi kịch bản demo}
-Kịch bản demo được thiết kế theo phương pháp luận \textbf{Kiểm thử chức năng hộp đen} (Black-Box Functional Testing) kết hợp phương pháp \textbf{Bơm sự cố có kiểm soát} (Chaos Engineering \& Fault Injection). Toàn bộ quy trình được chia thành \textbf{5 giai đoạn kế tiếp nhau} (thời lượng thực hiện dự kiến: 15 đến 20 phút), chứng minh tuần tự từ trạng thái bình thường, năng lực kiểm soát bảo mật, cho đến khả năng phục hồi tự động khi xuất hiện các sự cố phần cứng và đứt cáp nghiêm trọng.
 
 \subsection{Giai đoạn 1: Kiểm tra trạng thái vận hành chuẩn và hội tụ giao thức}
-\textbf{Mục tiêu:} Kiểm tra trạng thái HSRP/OSPF trên các thiết bị được nêu trong từng bước và xác nhận các tuyến cần thiết hoạt động. Các kết quả này không tự chứng minh toàn bộ 25 thiết bị đã được kiểm thử.
-
 \subsubsection{Bước 1.1: Kiểm tra trạng thái HSRP trên toàn bộ các cổng Gateway}
 Truy cập vào giao diện dòng lệnh (CLI) của các thiết bị đóng vai trò trạm chuyển tiếp chính và phụ để kiểm tra trạng thái nhóm HSRP:
 \begin{lstlisting}[language=csh,caption={Kiểm tra trạng thái HSRP trên Core-SW1 và Router chi nhánh}]
@@ -346,7 +241,6 @@ Tracing route to 10.20.40.10 over a maximum of 30 hops:
   4     4 ms     3 ms     4 ms   10.20.40.10     (Server DBP)
 Trace complete.
 \end{lstlisting}
-\textbf{Phân tích khoa học:} Gói tin đi thẳng qua tuyến cáp thuê riêng \texttt{Carrier-R} với độ trễ cực thấp ($\approx 3\text{ ms}$) và tổng số chặng tối ưu (4 hops). Tuyến dự phòng qua \texttt{ISP2-R} hoàn toàn không có lưu lượng đi qua trong điều kiện bình thường.
 
 \noindent Các ảnh bổ sung sau ghi nhận kiểm tra kết nối từ hai máy trạm. Kết quả chỉ áp dụng cho đích và lần thử hiển thị; ảnh LAN-02 có mất gói ở lần đầu trước khi ping thành công ở lần sau.
 \begin{figure}[H]
@@ -365,8 +259,6 @@ Trace complete.
 \end{figure}
 
 \subsection{Giai đoạn 2: Kiểm thử an ninh phân vùng, DMZ và kiểm soát truy cập}
-\textbf{Mục tiêu:} Ghi nhận các phép thử Guest và truy cập Web có ảnh minh chứng trong thư mục \texttt{graphics/tc\_pic}. Chỉ kết luận trong phạm vi đích và giao thức thể hiện trên từng ảnh.
-
 \subsubsection{Thử nghiệm 2.1: Cô lập mạng khách (Guest WiFi Isolation)}
 Trên máy khách \texttt{MAIN-B-GUEST} thuộc VLAN 60 (ảnh minh chứng hiển thị địa chỉ \texttt{10.10.60.50}), thực hiện các phép ping:
 \begin{enumerate}
@@ -395,9 +287,7 @@ Từ máy trạm nhân viên \texttt{MAIN-PC-STAFFA}, mở trình duyệt và tr
 
 Ảnh \texttt{INT\_01.png} ghi nhận máy trạm nhân viên mở được trang Web ngoài tại \texttt{http://192.0.2.10}. Hai ảnh này không kiểm chứng truy cập Web từ Internet vào địa chỉ NAT công khai hoặc truy cập SSH quản trị; các phép thử đó không được báo cáo là đã thực hiện ở đây.
 
-\subsection{Giai đoạn 3: Kiểm thử chuyển đổi dự phòng WAN tại chi nhánh (Branch WAN Failover)}
-\textbf{Mục tiêu:} Chứng minh tính năng tự phục hồi (Self-Healing) của hệ thống: Khi kênh thuê riêng tốc độ cao Leased Line bị đứt cáp vật lý, toàn bộ lưu lượng của chi nhánh tự động chuyển hướng sang đường truyền Internet dự phòng Broadband thông qua cơ chế kết hợp giữa HSRP Interface Tracking và Floating Static Route.
-
+\subsection{Giai đoạn 3: Kiểm thử chuyển đổi dự phòng WAN tại chi nhánh}
 \subsubsection{Quy trình thực hiện kịch bản sự cố}
 \begin{enumerate}
     \item \textbf{Thiết lập luồng giám sát liên tục:} Trên máy trạm \texttt{PC-BHTQ3} (\texttt{10.30.10.12}) tại Chi nhánh BHTQ, mở cửa sổ dòng lệnh và thực thi lệnh ping liên tục tới máy chủ Chi nhánh 1:
@@ -489,9 +379,7 @@ Các ảnh dưới đây là những phiên kiểm tra riêng, không phải t�
 \end{figure}
 
 \subsection{Giai đoạn 4: Kiểm thử dự phòng chuyển mạch Lõi và Bó cáp EtherChannel tại Main Site}
-\textbf{Mục tiêu:} Chứng minh khả năng chịu lỗi tối đa của Trung tâm dữ liệu Trụ sở chính (Data Center Resiliency) trước sự cố đứt cáp đường trục và sập nguồn Switch Lõi chính.
-
-\subsubsection{Thử nghiệm 4.1: Đứt 1 liên kết vật lý trong bó cáp EtherChannel LACP}
+\subsubsection{Thử nghiệm 4.1: Đứt 1 liên kết vật lý trong bó cáp}
 \begin{enumerate}
     \item Thiết lập lệnh \texttt{ping 10.10.40.10 -t} từ máy trạm \texttt{PC\_DATA} (\texttt{Access-A} thuộc VLAN 10).
     \item Ngắt cổng \texttt{FastEthernet0/2} trên \texttt{Core-SW1} (một trong hai sợi cáp tạo nên Port-channel 1 nối sang \texttt{Core-SW2}):
@@ -513,13 +401,12 @@ Core-SW1(config-if)# shutdown
     \item \textbf{Kết quả:} Toàn bộ hoạt động khám chữa bệnh, truy xuất phim X-quang/MRI trên hệ thống PACS tại Bệnh viện vẫn duy trì liên tục, bảo đảm an toàn sinh mạng người bệnh.
 \end{enumerate}
 
-\subsection{Giai đoạn 5: Tổng kết nghiệm thu và Ma trận kiểm thử sự cố thực tế}
-Toàn bộ quá trình nghiên cứu, triển khai và kiểm thử hệ thống đã ghi nhận 7 sự cố kỹ thuật điển hình (Test Cases TC-01 đến TC-07). Bảng~\ref{tab:test_matrix} tổng hợp chi tiết nguyên nhân gốc rễ (Root Cause Analysis - RCA) và phương án khắc phục triệt để đã được thực thi và xác minh thành công.
+\subsection{Giai đoạn 5: Tổng kết nghiệm thu}
 
 \begin{small}
 \setlength{\tabcolsep}{4pt}
 \begin{longtable}{|c|p{2.7cm}|p{2.5cm}|c|p{6.3cm}|}
-\caption{Ma trận nhật ký kiểm thử, phân tích lỗi gốc rễ và kết quả khắc phục (Test Cases TC-01 -- TC-07)} \label{tab:test_matrix} \\
+\caption{Bảng kết quả kiểm thử} \label{tab:test_matrix} \\
 \hline
 \textbf{Mã TC} & \textbf{Hạng mục kiểm thử} & \textbf{Hiện trạng ban đầu} & \textbf{Kết quả} & \textbf{Phân tích nguyên nhân gốc rễ \& Biện pháp xử lý triệt để} \\ \hline
 \endfirsthead
@@ -547,14 +434,7 @@ Toàn bộ quá trình nghiên cứu, triển khai và kiểm thử hệ thống
 \textbf{TC-05} & Truy vết đường đi từ DBP sang Server BHTQ (\texttt{10.30.40.10}) & Rớt gói tại chặng cuối (Hop 4: * * *). & \textbf{PASS} & \textbf{Nguyên nhân:} Gói tin đến được router BHTQ-R1 nhưng Server đích \texttt{10.30.40.10} bị cấu hình thiếu địa chỉ Default Gateway.\newline
 \textbf{Xử lý:} Cấu hình Default Gateway trỏ về VIP HSRP \texttt{10.30.40.1} trên máy chủ; kiểm tra gán đúng Access VLAN 40 trên switch. \\ \hline
 \textbf{TC-06} & Kiểm tra thông mạch trực tiếp qua kênh chính Leased Line & Đạt tỷ lệ 5/5 (100\%), RTT trung bình $2\text{ ms}$. & \textbf{PASS} & \textbf{Đánh giá:} Tuyến chính qua Carrier-R có độ trễ cực thấp, đường truyền ổn định, chiếm quyền ưu tiên tuyệt đối khi không có sự cố. \\ \hline
-\textbf{TC-07} & Kiểm tra running-config trên 15 thiết bị được liệt kê trong \texttt{test.md} (trong tổng số 25 thiết bị) & Đã xuất running-config của 15 thiết bị. & \textbf{PASS có giới hạn} & \textbf{Đánh giá:} Chỉ xác nhận các cấu hình đã xuất; chưa đủ bằng chứng khẳng định cả 25 thiết bị đã được sao lưu hoặc toàn bộ chính sách đã sẵn sàng vận hành. \\ \hline
 \end{longtable}
 \end{small}
 
-\subsection{Quy chuẩn lưu trữ cấu hình chuẩn (Golden Configuration Archival)}
-Để kết thúc phiên nghiệm thu và đưa hệ thống vào trạng thái sẵn sàng bàn giao:
-\begin{enumerate}
-    \item Thực hiện rà soát lần cuối bảng định tuyến trên 4 router biên và 2 switch lõi bằng lệnh \texttt{show ip route} để đảm bảo không còn tuyến mồ côi hoặc sai lệch Administrative Distance.
-    \item Chạy lệnh \texttt{write memory} trên các thiết bị có cấu hình trong mô hình và lưu bản sao lưu. TC-07 hiện chỉ ghi nhận đã xuất cấu hình 15/25 thiết bị; cần bổ sung 10 thiết bị còn lại trước khi xác nhận bàn giao đầy đủ.
-    \item Đóng gói tệp mô phỏng nghiệm thu cuối cùng và lưu trữ vào kho lưu trữ kỹ thuật của Bệnh viện theo đúng tiêu chuẩn bàn giao dự án công nghệ thông tin.
-\end{enumerate}
+

@@ -261,16 +261,8 @@ VPN-RA-02 & Client từ xa ping \texttt{10.10.40.10}; lần đầu mất 1/4 gó
     \centering
     \captionsetup{skip=10pt}
     \includegraphics[width=0.9\linewidth,height=0.44\textheight,keepaspectratio]{graphics/tc_pic/VPN_01.png}
-    \caption{VPN-RA-02: client từ xa truy cập Server Farm qua VPN}
+    \caption{VPN-RA-02: nhân viên từ xa truy cập Server Farm qua VPN}
     \label{fig:security-vpn-ra-02}
 \end{figure}
 
-\subsection{Tính năng chưa thể mô phỏng đầy đủ}
-\begin{itemize}
-    \item \textbf{IDS/IPS/NGFW:} Packet Tracer không mô phỏng đầy đủ chữ ký phát hiện/ngăn chặn, phân tích nội dung sâu hoặc giải mã TLS. Đề xuất dùng nền tảng IDS/IPS phù hợp trong môi trường thực tế; kiểm thử ở chế độ giám sát trước khi bật chế độ chặn, đặc biệt với thiết bị y tế.
-    \item \textbf{VPN liên cơ sở và VPN người dùng từ xa:} Ảnh testcase ghi nhận SA IPsec site-to-site, client VPN được cấp địa chỉ và một phiên truy cập Server Farm. Các ảnh không chứng minh đầy đủ mọi peer, subnet, cơ chế xác thực, logging hoặc bảo mật khi triển khai thực tế; cần kiểm thử và rà soát cấu hình bổ sung.
-    \item \textbf{AAA/MFA, quản lý khóa và SIEM:} Mô hình không chứng minh đầy đủ RADIUS/TACACS+, MFA, vòng đời chứng thư/khóa bí mật hay tương quan nhật ký tập trung. Đây là khuyến nghị triển khai, không phải tính năng đã nghiệm thu.
-    \item \textbf{Hiệu năng và tính sẵn sàng thực tế:} Packet Tracer không chứng minh thông lượng, tải đồng thời Wi-Fi, hiệu năng IPS, độ trễ VPN hoặc khả năng chuyển đổi dự phòng phần cứng. Cần thử nghiệm trong môi trường thiết bị/ảo hóa phù hợp trước khi triển khai thực tế.
-\end{itemize}
 
-\noindent Các giới hạn mô phỏng tổng quát khác được trình bày tại Mục~\ref{sec:limitations}.
