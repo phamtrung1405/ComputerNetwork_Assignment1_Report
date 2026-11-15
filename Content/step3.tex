@@ -1,0 +1,91 @@
+\section{Bước 3: Tính lưu lượng yêu cầu, băng thông ISP dự kiến và cấu hình đề xuất}
+\label{sec:step3}
+
+\subsection{Số liệu đầu vào từ đề bài}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{5.2cm}|p{2.6cm}|p{2.4cm}|p{3.6cm}|}
+\caption{Nguồn lưu lượng theo đề bài} \label{tab:traffic_input} \\
+\hline
+\textbf{Nguồn lưu lượng} & \textbf{Tải xuống (MB/ngày)} & \textbf{Tải lên (MB/ngày)} & \textbf{Số lượng} \\ \hline
+\endhead
+Server (cập nhật, web, cơ sở dữ liệu) & 1000 / server & 2000 / server & Main: 10; mỗi chi nhánh: 2 \\ \hline
+Máy trạm & 500 / máy & 100 / máy & Main: 600; mỗi chi nhánh: 260 \\ \hline
+Thiết bị Wi-Fi của khách (tải xuống) & 500 / thiết bị & -- & \textbf{Giả định} (đề không nêu số lượng) \\ \hline
+\end{longtable}
+\end{small}
+\begin{itemize}[noitemsep,topsep=2pt]
+    \item Giờ cao điểm: 9h--11h và 15h--16h, tức \textbf{3 giờ/ngày}, chiếm \textbf{80\%} lưu lượng ngày.
+    \item Tăng trưởng \textbf{20\% trong 5 năm}.
+    \item \textbf{Giả định số thiết bị Wi-Fi khách:} Main 300, mỗi chi nhánh 100 (cần xác nhận bằng khảo sát).
+\end{itemize}
+
+\subsection{Công thức}
+\[
+\text{Băng thông cao điểm (Mbps)} = \frac{\text{MB/ngày} \times 8 \times 0{,}8}{3 \times 3600}, \qquad
+\text{Băng thông thiết kế} = \text{băng thông cao điểm} \times 1{,}2 .
+\]
+Ví dụ: Main tải xuống từ máy trạm và server là $600\times500 + 10\times1000 = 310\,000$ MB/ngày, tương ứng $310\,000 \times 8 \times 0{,}8 \div 10\,800 \approx \mathbf{183{,}7}$ Mbps.
+
+\subsection{Kết quả tính}
+
+\subsubsection{Theo từng site}
+\begin{small}
+\begin{longtable}{|l|l|r|r|r|}
+\caption{Băng thông yêu cầu theo từng site} \label{tab:bw_sites} \\
+\hline
+\textbf{Site} & \textbf{Hướng} & \textbf{MB/ngày} & \textbf{Cao điểm (Mbps)} & \textbf{Sau tăng trưởng $\times1{,}2$ (Mbps)} \\ \hline
+\endhead
+Main & Tải xuống (máy trạm + server) & 310\,000 & 183,7 & \textbf{220,4} \\ \hline
+Main & Tải lên & 80\,000 & 47,4 & \textbf{56,9} \\ \hline
+Main & Wi-Fi khách (300 thiết bị) & 150\,000 & 88,9 & \textbf{106,7} \\ \hline
+Main & \textbf{Tổng} & 540\,000 & 320,0 & \textbf{384,0} \\ \hline
+DBP & Tải xuống & 132\,000 & 78,2 & \textbf{93,9} \\ \hline
+DBP & Tải lên & 30\,000 & 17,8 & \textbf{21,3} \\ \hline
+DBP & Wi-Fi (100 thiết bị) & 50\,000 & 29,6 & \textbf{35,6} \\ \hline
+DBP & \textbf{Tổng} & 212\,000 & 125,6 & \textbf{150,8} \\ \hline
+BHTQ & \textbf{Tổng} (như DBP) & 212\,000 & 125,6 & \textbf{150,8} \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Tổng hợp theo liên kết}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.8cm}|p{4.2cm}|p{2.0cm}|p{4.6cm}|}
+\caption{Băng thông đề xuất theo từng liên kết} \label{tab:bw_links} \\
+\hline
+\textbf{Liên kết} & \textbf{Cách tính} & \textbf{Nhu cầu thiết kế} & \textbf{Băng thông đề xuất} \\ \hline
+\endhead
+WAN Main $\leftrightarrow$ DBP (leased line) & Toàn bộ lưu lượng chi nhánh về Main (dịch vụ tập trung) & $\approx 151$ Mbps & \textbf{200 Mbps} (có dư), cộng broadband dự phòng 100--200 Mbps \\ \hline
+WAN Main $\leftrightarrow$ BHTQ (leased line) & Như trên & $\approx 151$ Mbps & \textbf{200 Mbps}, cộng broadband dự phòng \\ \hline
+Internet của Main & Main 384 + DBP 151 + BHTQ 151 (đề bài: mọi Internet qua Main) & $\approx 686$ Mbps & \textbf{2 đường $\times$ 500 Mbps} (load-balancing; mỗi đường chịu được ở mức giảm cấp khi đường kia hỏng) \\ \hline
+Uplink Access $\to$ Core (mỗi tòa) & Tải máy trạm một tòa $\approx 300$ máy & $\approx 100$--150 Mbps & \textbf{2$\times$1 GbE (EtherChannel)}, oversubscription chấp nhận được \\ \hline
+Server Farm & Nhiều người dùng truy cập đồng thời & $< 1$ Gbps & Server nối \textbf{1 GbE}, uplink 2$\times$1 GbE; nâng 10 GbE nếu hệ thống PACS lớn \\ \hline
+\end{longtable}
+\end{small}
+\noindent \textbf{Lưu ý:} cách tính này \textbf{cộng toàn bộ lưu lượng}, gồm cả lưu lượng nội bộ, nên là cận trên an toàn; nếu chỉ một phần đi Internet thì băng thông Internet có thể thấp hơn. DSL thường không đạt 500 Mbps; mức này giả định cáp quang doanh nghiệp, còn nếu dùng DSL thực sự thì phải bổ sung nhiều đường hơn.
+
+\subsection{Cấu hình đề xuất cho mạng bệnh viện}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.2cm}|p{11.6cm}|}
+\caption{Cấu hình đề xuất} \label{tab:proposed_config} \\
+\hline
+\textbf{Hạng mục} & \textbf{Đề xuất} \\ \hline
+\endhead
+Cấu trúc & Collapsed core (2 Core), HSRP, Rapid-PVST, LACP \\ \hline
+WAN & Leased line/MPLS chính 200 Mbps mỗi chi nhánh cộng broadband dự phòng; OSPF, floating static \\ \hline
+Internet & Hai nhà mạng, load-balancing/failover; mọi lưu lượng qua \texttt{MAIN-FW-02} \\ \hline
+Firewall & Hai tầng (\texttt{MAIN-FW-02} biên, \texttt{MAIN-FW-01} nội bộ), DMZ ở giữa; chọn thiết bị theo throughput khi bật kiểm tra \\ \hline
+QoS & Ưu tiên thoại (VLAN 80) và dịch vụ bệnh viện quan trọng; giới hạn băng thông Guest \\ \hline
+VPN & Site-to-site IPsec giữa router WAN; remote-access cho teleworker (pool \texttt{10.10.200.0/24}) \\ \hline
+Giám sát & Syslog (\texttt{MAIN-SYSLOG}) và NTP (\texttt{MAIN-NTP}); SNMP; lưu log tập trung \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Giới hạn của phần tính}
+\begin{itemize}[noitemsep,topsep=2pt]
+    \item Số thiết bị Wi-Fi là giả định; kết quả sẽ thay đổi theo khảo sát.
+    \item Chưa tính lưu lượng ảnh y khoa (PACS/RIS), thoại và camera; nếu có thì phải cộng thêm (camera: số camera $\times$ bitrate, xem Bước~1).
+    \item Chưa tính overhead IPsec (thường 10--20\%).
+\end{itemize}

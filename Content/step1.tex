@@ -1,0 +1,273 @@
+\section{Bước 1: Cấu trúc mạng phù hợp cho các tòa nhà}
+\label{sec:step1}
+
+Phạm vi gồm Main Site (TP.\,Hồ Chí Minh) và hai Auxiliary Site (DBP Street, BHTQ Street). Các con số về số lượng người dùng, thiết bị, camera và băng thông trong phần này là \textbf{giả định để tính toán}, suy ra từ topology và quy hoạch địa chỉ (ví dụ mặt nạ \texttt{/23}, \texttt{/22}); chúng phải được xác nhận bằng checklist khảo sát ở mục~\ref{sec:step1-checklist}.
+
+\subsection{Phân tích yêu cầu hệ thống mạng}
+
+\subsubsection{Vai trò từng site}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.0cm}|p{7.6cm}|p{3.2cm}|}
+\caption{Vai trò và dải địa chỉ của từng site} \label{tab:site_roles} \\
+\hline
+\textbf{Site} & \textbf{Vai trò} & \textbf{Dải địa chỉ} \\ \hline
+\endhead
+\textbf{Main Site -- TP.HCM} & Trung tâm mạng, quản lý và cung cấp dịch vụ tập trung (server, DMZ, firewall, Internet) & \texttt{10.10.0.0/16} \\ \hline
+\textbf{DBP Street Site} & Chi nhánh 1: người dùng, máy in, camera, Wi-Fi; dùng dịch vụ từ Main Site & \texttt{10.20.0.0/16} \\ \hline
+\textbf{BHTQ Street Site} & Chi nhánh 2: tương tự DBP & \texttt{10.30.0.0/16} \\ \hline
+\textbf{WAN} & Liên kết liên site (leased line chính, broadband dự phòng) & \texttt{10.255.0.0/24} \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Yêu cầu chức năng}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.0cm}|p{5.6cm}|p{5.2cm}|}
+\caption{Yêu cầu chức năng và biểu hiện trong thiết kế} \label{tab:func_req} \\
+\hline
+\textbf{Nhóm} & \textbf{Yêu cầu} & \textbf{Biểu hiện trong thiết kế} \\ \hline
+\endhead
+Truy cập người dùng & Có dây và không dây cho nhân viên; Wi-Fi riêng cho khách & VLAN Staff-A, Staff-B, Guest Wi-Fi \\ \hline
+Dịch vụ tập trung & DNS, DHCP, ứng dụng, cơ sở dữ liệu, file, thoại IP & Server Farm VLAN 40, VLAN 80 thoại \\ \hline
+Dịch vụ công khai & Web, DNS, Email cho Internet & DMZ VLAN 50 \\ \hline
+Thiết bị chuyên dụng & Thiết bị y tế, camera giám sát, đầu ghi NVR & VLAN Medical (30), Camera (70) \\ \hline
+Liên lạc liên site & Chi nhánh dùng dịch vụ của Main Site & WAN leased line + broadband dự phòng \\ \hline
+Quản trị & Giám sát tập trung, log, xác thực quản trị & \texttt{MAIN-NTP}, \texttt{MAIN-SYSLOG}, \texttt{AAA}, Jump Host \texttt{MAIN-SSH} \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Yêu cầu phi chức năng}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.4cm}|p{5.2cm}|p{6.2cm}|}
+\caption{Yêu cầu phi chức năng (chỉ tiêu đề xuất, cần xác nhận)} \label{tab:nonfunc_req} \\
+\hline
+\textbf{Nhóm} & \textbf{Yêu cầu} & \textbf{Chỉ tiêu đề xuất} \\ \hline
+\endhead
+Sẵn sàng & Không điểm hỏng đơn ở lõi và gateway & Core đôi + HSRP; hai đường WAN; chi nhánh hai router \\ \hline
+Bảo mật & Phân vùng, kiểm soát luồng, cách ly khách và camera & Firewall nhiều zone, VLAN, ACL \\ \hline
+Hiệu năng & Không nghẽn ở Server Farm, WAN, firewall & Xem Bước~3 \\ \hline
+Mở rộng & Dự phòng \textbf{tăng 20\% thiết bị trong 5 năm} & Quy hoạch subnet có dư (\texttt{/23}, \texttt{/22}) \\ \hline
+Vận hành & Dễ quản trị, dễ đi dây, thẩm mỹ & Mục~\ref{sec:step1-structure} \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Quy mô địa chỉ cho phép}
+Số host dùng được bằng $2^{32-\text{prefix}}-2$; mục tiêu hiện tại bằng số host tối đa chia $1{,}2$ (để chừa $20\%$ tăng trưởng).
+
+\begin{small}
+\begin{longtable}{|l|c|c|c|}
+\caption{Quy mô địa chỉ của các VLAN dùng chung tại Main Site} \label{tab:addr_scale} \\
+\hline
+\textbf{VLAN} & \textbf{Subnet} & \textbf{Host tối đa} & \textbf{Mục tiêu hiện tại (sau trừ 20\%)} \\ \hline
+\endhead
+Staff-A & \texttt{/23} & 510 & $\approx 425$ \\ \hline
+Staff-B & \texttt{/23} & 510 & $\approx 425$ \\ \hline
+Medical & \texttt{/24} & 254 & $\approx 210$ \\ \hline
+Server Farm & \texttt{/24} & 254 & $\approx 210$ \\ \hline
+DMZ & \texttt{/24} & 254 & $\approx 210$ \\ \hline
+Guest Wi-Fi & \texttt{/22} & 1022 & $\approx 850$ \\ \hline
+Camera & \texttt{/24} & 254 & $\approx 210$ \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Checklist khảo sát tại vị trí lắp đặt}
+\label{sec:step1-checklist}
+Mỗi mục được đánh dấu khi khảo sát từng site (Main Site, DBP, BHTQ). Kết quả khảo sát thực tế chưa có trong báo cáo này.
+
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.0cm}|p{10.8cm}|}
+\caption{Checklist khảo sát} \label{tab:survey_checklist} \\
+\hline
+\textbf{Nhóm} & \textbf{Nội dung cần khảo sát} \\ \hline
+\endhead
+Tòa nhà và không gian & Số tầng, diện tích, bản vẽ kiến trúc; vị trí phòng kỹ thuật chính (MDF) và tủ từng tầng (IDF), khoảng cách giữa chúng; đường kỹ thuật dọc, máng cáp, trần giả; vật liệu tường/kính ảnh hưởng sóng Wi-Fi; khu vực hạn chế lộ cáp. \\ \hline
+Điện, làm mát, an toàn & Nguồn điện, công suất ổ cắm phòng máy; UPS và máy phát; làm mát, thông gió; tiếp địa, chống sét, chống cháy; kiểm soát ra vào phòng máy. \\ \hline
+Hệ thống cáp & Loại cáp hiện có (Cat5e, Cat6, quang), chiều dài (đồng không quá 90\,m mỗi đoạn); số điểm mạng hiện có và cần thêm; cáp quang giữa tòa nhà/tầng (đơn mode hay đa mode); nhãn cáp, sơ đồ patch panel. \\ \hline
+Người dùng và thiết bị & Số nhân viên theo phòng/khu và dự kiến sau 5 năm; số máy tính, máy in, IP phone, máy chủ; số camera, độ phân giải, thời gian lưu trữ; danh sách \textbf{thiết bị y tế} (nhà sản xuất, giao thức, cố định IP, PoE); ứng dụng quan trọng và thời gian chết cho phép. \\ \hline
+Wi-Fi & Khảo sát phủ sóng (vị trí AP, công suất, kênh); nhiễu sẵn có; mật độ người dùng tại phòng họp, sảnh, khu chờ; yêu cầu Wi-Fi khách (số lượng, thời gian, cổng đăng nhập). \\ \hline
+WAN và Internet & Nhà mạng sẵn có, loại kết nối (leased line, cáp quang, broadband); băng thông, SLA, thời gian lắp, chi phí, khả năng dùng nhà mạng thứ hai; địa chỉ IP công cộng và điểm đấu nối. \\ \hline
+An ninh và tuân thủ & Chính sách bảo mật hiện có; yêu cầu tuân thủ liên quan (bảo vệ dữ liệu bệnh nhân); yêu cầu lưu log và sao lưu. \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Khu vực tải cao, cấu hình thiết bị và load balancer}
+
+\subsubsection{Khu vực tải cao}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.8cm}|p{4.0cm}|p{7.0cm}|}
+\caption{Khu vực tải cao và cấu hình thiết bị đề xuất} \label{tab:high_load} \\
+\hline
+\textbf{Khu vực} & \textbf{Lý do tải cao} & \textbf{Cấu hình thiết bị đề xuất} \\ \hline
+\endhead
+Core $\leftrightarrow$ Access & Gom lưu lượng toàn bộ người dùng & Uplink gộp bằng EtherChannel (LACP), Core đôi, ưu tiên cổng Gigabit trở lên \\ \hline
+Server Farm & Mọi người dùng và chi nhánh truy cập cơ sở dữ liệu, ứng dụng, file & Server nối hai Core; tách tầng ứng dụng và cơ sở dữ liệu; NIC kép nếu có; cần load balancer (mục~\ref{sec:lb}) \\ \hline
+Firewall (Internet edge) & NAT/PAT, kiểm tra gói của toàn bộ lưu lượng ra/vào & Chọn firewall theo throughput \emph{khi bật kiểm tra}, không theo thông số danh nghĩa; kiến trúc hai firewall nối tiếp (\texttt{MAIN-FW-02} biên Internet, \texttt{MAIN-FW-01} nội bộ); hiện chưa dùng cặp Active/Standby \\ \hline
+WAN (leased line) & Chi nhánh dùng dịch vụ tập trung ở Main Site & Băng thông đủ cho đỉnh; QoS ưu tiên thoại, giữ chỗ băng thông cho ứng dụng; đường dự phòng broadband \\ \hline
+Camera / NVR & Luồng video liên tục & VLAN riêng, PoE đủ công suất, NVR có uplink riêng; không đi qua WAN nếu không cần \\ \hline
+Wi-Fi & Nhiều thiết bị di động, Wi-Fi khách & Mật độ AP phù hợp, giới hạn băng thông khách, WLC quản lý tập trung \\ \hline
+DMZ web & Truy cập công khai từ Internet & Reverse proxy/WAF, load balancer trước nhiều web server \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Nơi đặt load balancer}
+\label{sec:lb}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.6cm}|p{4.8cm}|p{5.4cm}|}
+\caption{Vị trí đặt load balancer} \label{tab:lb_places} \\
+\hline
+\textbf{Vị trí} & \textbf{Mục đích} & \textbf{Triển khai} \\ \hline
+\endhead
+DMZ, trước Web Server & Chia tải và dự phòng cho web công khai, che giấu server thật & Cặp load balancer/reverse proxy đặt trong DMZ, sau firewall \\ \hline
+Server Farm, trước tầng ứng dụng & Chia tải nhiều máy chủ ứng dụng, kiểm tra sức khỏe dịch vụ & Load balancer nội bộ (VIP cho dịch vụ) \\ \hline
+Internet edge & Chia tải hai nhà mạng & Chính sách định tuyến (PBR/ECMP), failover tự động \\ \hline
+WAN tại Main & Dùng hai đường về chi nhánh & OSPF chọn đường theo cost; leased line chính, đường phụ dự phòng \\ \hline
+Core & Chia tải liên kết giữa hai Core & EtherChannel LACP (chia tải theo băm) \\ \hline
+\end{longtable}
+\end{small}
+\noindent \textbf{Lưu ý với Packet Tracer:} Packet Tracer không có thiết bị load balancer. Cách mô phỏng khả dĩ là dùng nhiều \texttt{Server-PT} cùng dịch vụ kết hợp DNS trả về nhiều địa chỉ (round-robin). Load balancer thật được ghi trong thuyết minh là thiết bị thiết kế đích, không phải kết quả mô phỏng.
+
+\subsubsection{Ví dụ tính băng thông cục bộ (số liệu minh họa)}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.4cm}|p{4.6cm}|p{5.6cm}|}
+\caption{Ví dụ tính toán cục bộ (thay bằng số liệu khảo sát)} \label{tab:local_calc} \\
+\hline
+\textbf{Mục} & \textbf{Công thức} & \textbf{Ví dụ} \\ \hline
+\endhead
+Camera & Số camera $\times$ bitrate mỗi camera & $32 \times 4\,\text{Mbps} = \mathbf{128\,Mbps}$ vào NVR \\ \hline
+PoE camera & Số camera $\times$ công suất mỗi camera & $32 \times 7\,\text{W} \approx 224\,\text{W}$ (cộng dự phòng $20\%$) \\ \hline
+WAN chi nhánh $\to$ Main & Số người dùng đồng thời $\times$ lưu lượng trung bình & $100 \times 1\,\text{Mbps} \approx \mathbf{100\,Mbps}$ \\ \hline
+Oversubscription access $\to$ core & (Số cổng $\times$ tốc độ) $\div$ tốc độ uplink & $24 \times 1\,\text{Gbps} \div 2\,\text{Gbps} = 12{:}1$; chấp nhận được cho văn phòng \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Chọn cấu trúc mạng phù hợp kiến trúc tòa nhà}
+\label{sec:step1-structure}
+
+\subsubsection{Tiêu chí chọn}
+Các tiêu chí gồm: quy mô (số tầng, số access switch); khoảng cách (cáp đồng không quá 90\,m hay cần cáp quang); khả năng phát triển (mở rộng thêm tòa nhà/tầng); chi phí vận hành (đủ nhân lực quản trị nhiều lớp hay không).
+
+\subsubsection{Quyết định cấu trúc}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.3cm}|p{5.6cm}|p{5.9cm}|}
+\caption{Cấu trúc mạng được chọn cho từng site} \label{tab:structure_choice} \\
+\hline
+\textbf{Site} & \textbf{Cấu trúc đề xuất} & \textbf{Lý do} \\ \hline
+\endhead
+\textbf{Main Site} & \textbf{Phân cấp 2 tầng (collapsed core)}: Core đôi gộp lớp core và distribution, access theo khu/tầng & Số access switch vừa phải, ít thiết bị hơn mô hình 3 tầng, vẫn có dự phòng. Nếu khảo sát thấy nhiều tòa nhà hoặc hơn khoảng 10--15 access switch thì nâng lên 3 tầng (thêm lớp distribution) \\ \hline
+\textbf{DBP, BHTQ} & \textbf{Router + switch}, hai router (leased line và broadband) dùng HSRP & Quy mô nhỏ; ưu tiên dự phòng WAN hơn là nhiều lớp \\ \hline
+\textbf{Liên site} & \textbf{Hub-and-spoke}, Main Site là hub & Dịch vụ tập trung ở Main Site; chi nhánh chỉ cần đường về hub \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Tiện lợi và thẩm mỹ}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.6cm}|p{11.2cm}|}
+\caption{Đề xuất về đi cáp, tủ rack và thẩm mỹ} \label{tab:aesthetics} \\
+\hline
+\textbf{Hạng mục} & \textbf{Đề xuất} \\ \hline
+\endhead
+Đi cáp & Cáp có cấu trúc (structured cabling): MDF ở phòng chính, IDF ở từng tầng; cáp đi máng/trần giả, không lộ \\ \hline
+Tủ rack & Bố trí theo lớp: cáp quang và core ở trên, access ở dưới; có thanh quản lý cáp, patch panel \\ \hline
+Nhãn & Dán nhãn cáp và cổng theo quy ước thống nhất (tầng--tủ--cổng) \\ \hline
+Màu cáp & Phân màu patch cord theo chức năng (người dùng, server, quản trị, camera) \\ \hline
+AP Wi-Fi & Gắn trần, đặt hợp mỹ quan, phủ đều; hạn chế AP đặt trong phòng riêng \\ \hline
+Dự phòng & Chừa 20--30\% cổng trống và không gian rack cho mở rộng \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Thiết kế Wi-Fi, chuẩn bảo mật và phân vùng}
+
+\subsubsection{Thiết kế Wi-Fi}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.2cm}|p{10.6cm}|}
+\caption{Thiết kế mạng không dây} \label{tab:wifi_design} \\
+\hline
+\textbf{Hạng mục} & \textbf{Thiết kế} \\ \hline
+\endhead
+Kiến trúc & Lightweight AP (LAP) + WLC đặt ở Server Farm (\texttt{MAIN-WLC}); AP quản lý trong VLAN 90 \\ \hline
+SSID nhân viên & WPA2/WPA3-Enterprise (802.1X), xác thực bằng RADIUS (máy chủ \texttt{AAA}), gán VLAN 20 Staff-B \\ \hline
+SSID khách & VLAN 60 Guest Wi-Fi, cô lập thiết bị (client isolation), giới hạn băng thông, trang đăng nhập (captive portal), chỉ ra Internet \\ \hline
+Thiết bị y tế không dây (nếu có) & SSID/VLAN riêng theo yêu cầu nhà sản xuất \\ \hline
+Quy hoạch kênh & 2,4\,GHz dùng kênh 1/6/11; 5\,GHz ưu tiên cho nhân viên; công suất vừa phải để tránh chồng lấn \\ \hline
+Phủ sóng & Đặt AP theo kết quả site survey; mục tiêu tín hiệu khoảng $-67$\,dBm tại vùng sử dụng \\ \hline
+Chi nhánh & AP độc lập hoặc LAP về WLC tùy băng thông WAN; SSID nhân viên ở VLAN staff của chi nhánh \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Chuẩn bảo mật áp dụng}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.8cm}|p{11.0cm}|}
+\caption{Chuẩn và biện pháp bảo mật theo lớp} \label{tab:security_standards} \\
+\hline
+\textbf{Lớp} & \textbf{Chuẩn / biện pháp} \\ \hline
+\endhead
+Wi-Fi & IEEE 802.11i (WPA2/WPA3), IEEE 802.1X với RADIUS; phát hiện AP lạ (rogue AP) \\ \hline
+Truy cập thiết bị & SSH v2, xác thực tập trung (AAA), chỉ Jump Host được quản trị \\ \hline
+Cổng switch & Port-security, BPDU Guard, tắt cổng không dùng \\ \hline
+Phân vùng & VLAN + firewall zone + ACL (nguyên tắc ít quyền nhất) \\ \hline
+Giám sát & Syslog tập trung, đồng bộ giờ NTP \\ \hline
+Khung quản trị & Có thể tham chiếu ISO/IEC 27001 và các quy định bảo vệ dữ liệu liên quan; \textbf{chọn chuẩn cụ thể theo yêu cầu của đơn vị} \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Phân vùng và chính sách giữa các vùng}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.9cm}|p{2.3cm}|p{3.0cm}|p{5.6cm}|}
+\caption{Các vùng, VLAN và mức bảo mật trên firewall (ASA)} \label{tab:partitions} \\
+\hline
+\textbf{Vùng} & \textbf{VLAN / zone} & \textbf{Security level} & \textbf{Ghi chú} \\ \hline
+\endhead
+Internet (outside) & Outside & 0 & Không tin cậy \\ \hline
+DMZ & VLAN 50 & 50 & \texttt{DMZ-WEB}, \texttt{DMZ-SERVER}, \texttt{DMZ-DNS}; Web, DNS, Email công khai \\ \hline
+Server Farm & VLAN 40 & Inside & \texttt{MAIN-DHCP}, \texttt{MAIN-SYSLOG}, \texttt{MAIN-EMAIL}, \texttt{MAIN-FTP}, \texttt{MAIN-WLC} \\ \hline
+Mạng người dùng & VLAN 10, 20 & Inside & Nhân viên \\ \hline
+Khách & VLAN 60 & Inside (hạn chế) & Chỉ ra Internet \\ \hline
+Camera & VLAN 70 & Inside (hạn chế) & Chỉ nói chuyện với NVR \\ \hline
+Thiết bị y tế & VLAN 30 & Inside (hạn chế) & Theo yêu cầu nhà sản xuất \\ \hline
+Quản trị & VLAN 90 & Inside & \texttt{MAIN-NTP}, \texttt{AAA}, Jump Host \texttt{MAIN-SSH}, AP \\ \hline
+WAN & Zone WAN & 60 & Chi nhánh về Main Site \\ \hline
+\end{longtable}
+\end{small}
+
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{2.0cm}|p{2.0cm}|p{2.6cm}|p{2.2cm}|p{2.4cm}|p{2.2cm}|}
+\caption{Ma trận cho phép giữa các vùng (tóm tắt)} \label{tab:zone_matrix} \\
+\hline
+\textbf{Từ $\downarrow$ / Đến $\rightarrow$} & \textbf{Internet} & \textbf{DMZ} & \textbf{Server Farm} & \textbf{Người dùng} & \textbf{Quản trị} \\ \hline
+\endhead
+\textbf{Internet} & -- & Chỉ HTTP/HTTPS tới web server & Chặn & Chặn & Chặn \\ \hline
+\textbf{DMZ} & Cho phép (có NAT) & -- & Chặn & Chặn & Chỉ gửi syslog \\ \hline
+\textbf{Người dùng} & Cho phép (NAT) & Cho phép (HTTP) & Chỉ dịch vụ cần thiết & Theo chính sách & Chặn \\ \hline
+\textbf{Khách} & Cho phép (NAT) & Chặn & Chặn & Chặn & Chặn \\ \hline
+\textbf{Camera} & Chặn & Chặn & Chặn & Chặn & Chỉ syslog \\ \hline
+\textbf{Quản trị} & Cho phép & Cho phép & Cho phép & Cho phép & -- \\ \hline
+\textbf{Chi nhánh} & Qua Main Site & Cho phép (HTTP) & Dịch vụ cần thiết & -- & Theo chính sách \\ \hline
+\end{longtable}
+\end{small}
+\noindent Ma trận trên là chính sách thiết kế; kết quả kiểm chứng trên mô phỏng (đặc biệt cô lập Guest) được trình bày ở Bước~5 và phần~\ref{sec:security_architecture}.
+
+\subsection{Cấu trúc vùng biên đã chọn}
+Mô hình \textbf{screened subnet} (DMZ nằm giữa hai firewall):
+\begin{lstlisting}[language={},basicstyle=\ttfamily\footnotesize,caption={Cấu trúc vùng biên Main Site}]
+Internet - ISP1-R - MAIN-FW-02 - DMZ-SW - MAIN-FW-01 -+- inside (Core, VLAN 250/253)
+                    (bien)       (VLAN 50)  (noi bo)    +- wan        -> MAIN-WAN1-SW -> MAIN-WAN-R1 -> Carrier-R (leased line)
+                                                        +- backup-wan -> MAIN-WAN2-SW -> MAIN-WAN-R2 -> ISP2-R (broadband)
+\end{lstlisting}
+\begin{itemize}[noitemsep,topsep=2pt]
+    \item Hai firewall không nối trực tiếp; mọi lưu lượng giữa chúng đi qua \texttt{DMZ-SW}.
+    \item Lưu lượng Internet $\leftrightarrow$ nội bộ phải qua cả hai firewall; lưu lượng WAN đi qua \texttt{MAIN-FW-01}.
+    \item Hai firewall hiện là \textbf{hai firewall độc lập}, chưa phải cặp HA (Packet Tracer không hỗ trợ failover ASA).
+    \item Router \texttt{MAIN-VPN} nằm ở vùng Internet Edge, nối \texttt{ISP1-SW}, \texttt{DMZ-SW} và \texttt{MAIN-FW-01}; đảm nhiệm VPN truy cập từ xa.
+\end{itemize}

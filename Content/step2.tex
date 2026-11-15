@@ -1,0 +1,261 @@
+\section{Bước 2: Danh sách thiết bị tối thiểu, quy hoạch IP và sơ đồ đi dây}
+\label{sec:step2}
+
+Tên thiết bị trong phần này lấy theo \textbf{sơ đồ Packet Tracer chuẩn} (hình~\ref{fig:topology}, mục~\ref{sec:step4-topology}). Các giá trị cấu hình (địa chỉ, ưu tiên HSRP, cost OSPF) lấy từ cấu hình mô phỏng đã xuất; các dòng thiết bị thật ở mục~\ref{sec:real-devices} chỉ là đề xuất.
+
+\subsection{Danh sách thiết bị đề xuất và thông số điển hình}
+
+\subsubsection{Thiết bị mạng trong topology mô phỏng}
+Bảng~\ref{tab:device_inventory} tổng hợp dòng phần cứng, vị trí và vai trò của \textbf{29 thiết bị mạng} (router, switch, firewall, bộ điều khiển WLAN) trong sơ đồ. Báo cáo bản trước chỉ liệt kê 25 thiết bị; bốn thiết bị \texttt{ISP1-SW}, \texttt{MAIN-VPN}, \texttt{MAIN-R} và \texttt{MAIN-WLC} có trong sơ đồ nên được bổ sung.
+
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.5cm}|p{2.6cm}|p{2.7cm}|p{6.0cm}|}
+\caption{Bảng đặc tả kỹ thuật và vai trò 29 thiết bị mạng} \label{tab:device_inventory} \\
+\hline
+\textbf{Tên thiết bị} & \textbf{Dòng phần cứng} & \textbf{Vị trí} & \textbf{Vai trò chính} \\ \hline
+\endfirsthead
+\multicolumn{4}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\ \hline
+\textbf{Tên thiết bị} & \textbf{Dòng phần cứng} & \textbf{Vị trí} & \textbf{Vai trò chính} \\ \hline
+\endhead
+\hline \multicolumn{4}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
+\endfoot
+\hline
+\endlastfoot
+\texttt{MAIN-CORE-SW1} & Catalyst 3560-24PS & Main -- Core & HSRP Active (prio 200), STP root (4096), OSPF RID 2.2.2.1, LACP Port-channel 1, DHCP relay \\ \hline
+\texttt{MAIN-CORE-SW2} & Catalyst 3560-24PS & Main -- Core & HSRP Standby (prio 150), STP secondary (8192), OSPF RID 2.2.2.2; tuyến dự phòng VLAN 253 lên \texttt{MAIN-FW-01} (liên kết down trên sơ đồ, chưa kiểm chứng) \\ \hline
+\texttt{Server-SW} & Catalyst 2960-24TT & Main -- Server Farm & Switch L2 cho \texttt{MAIN-DHCP}, \texttt{MAIN-SYSLOG}, \texttt{MAIN-EMAIL}, \texttt{MAIN-FTP}, \texttt{MAIN-R}, \texttt{MAIN-WLC} (VLAN 40) \\ \hline
+\texttt{Mgmt-SW} & Catalyst 2960-24TT & Main -- phòng IT & Kết nối Jump Host \texttt{MAIN-SSH} (10.10.90.30), \texttt{MAIN-NTP} (10.10.90.20), \texttt{AAA} (VLAN 90) \\ \hline
+\texttt{Cam-SW} & Catalyst 2960-24TT & Main -- an ninh & Camera IP \texttt{MAIN-CAM1/2} và \texttt{MAIN-SERVER-CAM} (VLAN 70) \\ \hline
+\texttt{SW-MAIN-A} & Catalyst 2960-24TT & Main -- tòa A & Máy trạm, IP phone, máy in, AP (VLAN 10, 60, 80) \\ \hline
+\texttt{SW-MAIN-B} & Catalyst 2960-24TT & Main -- tòa B & Khối hành chính, máy in, AP và Wi-Fi khách (VLAN 20, 60) \\ \hline
+\texttt{MAIN-FW-01} & Cisco ASA 5506-X & Main -- firewall trong & Phân tách inside, inside-backup, wan, backup-wan, dmz \\ \hline
+\texttt{MAIN-FW-02} & Cisco ASA 5506-X & Main -- firewall biên & Static NAT cho \texttt{DMZ-WEB}, PAT cho nội bộ ra Internet \\ \hline
+\texttt{DMZ-SW} & Catalyst 3560-24PS & Main -- DMZ & Trung chuyển \texttt{MAIN-FW-01}, \texttt{MAIN-FW-02}, \texttt{MAIN-VPN} và các máy chủ DMZ \\ \hline
+\texttt{MAIN-WAN1-SW} & Catalyst 2960-24TT & Main -- biên WAN & Tuyến chính: \texttt{MAIN-FW-01} Gi1/2 $\leftrightarrow$ \texttt{MAIN-WAN-R1} \\ \hline
+\texttt{MAIN-WAN2-SW} & Catalyst 2960-24TT & Main -- biên WAN & Tuyến phụ: \texttt{MAIN-FW-01} Gi1/1 $\leftrightarrow$ \texttt{MAIN-WAN-R2} \\ \hline
+\texttt{MAIN-WAN-R1} & Cisco 2911 ISR & Main -- biên WAN & Leased line: OSPF Area 0, cost 10, Serial0/3/0 tới \texttt{Carrier-R} \\ \hline
+\texttt{MAIN-WAN-R2} & Cisco 2911 ISR & Main -- biên WAN & Broadband dự phòng: định tuyến tĩnh, tới \texttt{ISP2-R}; IPsec site-to-site \\ \hline
+\texttt{MAIN-VPN} & Cisco 2911 ISR & Main -- Internet Edge & Cổng VPN truy cập từ xa (crypto map \texttt{CLIENT-VPN-MAP}), nối \texttt{ISP1-SW}, \texttt{DMZ-SW}, \texttt{MAIN-FW-01} \\ \hline
+\texttt{ISP1-R} & Cisco 2911 ISR & Internet & Router nhà cung cấp Internet, dải công cộng 203.162.10.0/29 \\ \hline
+\texttt{ISP1-SW} & Catalyst 2960-24TT & Internet & Nối \texttt{ISP1-R}, \texttt{MAIN-VPN} và máy \texttt{REMOTE} \\ \hline
+\texttt{MAIN-R} & Cisco 2901 ISR & Main -- Server Farm & Router đặt tại Server Farm, nối \texttt{Server-SW} \\ \hline
+\texttt{MAIN-WLC} & Wireless LAN Controller & Main -- Server Farm & Quản lý AP \texttt{MAIN-A-AP}, \texttt{MAIN-B-AP}; nối \texttt{Server-SW} \\ \hline
+\texttt{Carrier-R} & Cisco 2911 ISR & Backbone & Mạng leased line/MPLS giả lập, OSPF Area 0, điểm--điểm tới ba site \\ \hline
+\texttt{ISP2-R} & Cisco 2911 ISR & Backbone phụ & Mạng broadband giả lập cho đường dự phòng \\ \hline
+\texttt{DBP-R1} & Cisco 2911 ISR & DBP & HSRP Active (110, track Serial0/3/0 giảm 60), router-on-a-stick, OSPF qua \texttt{Carrier-R}; nối \texttt{DBP-SW2} \\ \hline
+\texttt{DBP-R2} & Cisco 2911 ISR & DBP & HSRP Standby (105), floating static AD 150 qua \texttt{ISP2-R}; nối \texttt{DBP-SW1} \\ \hline
+\texttt{DBP-SW1} & Catalyst 2960-24TT & DBP & Nối \texttt{DBP-R2} và \texttt{DBP-SW2}; \texttt{DBP-PC1}, \texttt{DBP-PC2}, \texttt{DBP-P}; trunk 802.1Q VLAN 10/30/40/70/90 \\ \hline
+\texttt{DBP-SW2} & Catalyst 2960-24TT & DBP & Nối \texttt{DBP-R1} và \texttt{DBP-SW1} (STP chống loop); \texttt{DBP-DHCP}, \texttt{DBP-SERVER-CAM}, \texttt{DBP-AP}, \texttt{DBP-CAM}, \texttt{DBP-PC3} \\ \hline
+\texttt{BHTQ-R1} & Cisco 2911 ISR & BHTQ & Như \texttt{DBP-R1}; nối \texttt{BHTQ-SW2} \\ \hline
+\texttt{BHTQ-R2} & Cisco 2911 ISR & BHTQ & Như \texttt{DBP-R2}; nối \texttt{BHTQ-SW1} \\ \hline
+\texttt{BHTQ-SW1} & Catalyst 2960-24TT & BHTQ & Nối \texttt{BHTQ-R2} và \texttt{BHTQ-SW2}; \texttt{BHTQ-PC1}, \texttt{BHTQ-PC2}, \texttt{BHTQ-P} \\ \hline
+\texttt{BHTQ-SW2} & Catalyst 2960-24TT & BHTQ & Nối \texttt{BHTQ-R1} và \texttt{BHTQ-SW1}; \texttt{BHTQ-PC3}, \texttt{BHTQ-CAM}, \texttt{BHTQ-AP}, \texttt{BHTQ-DHCP}, \texttt{BHTQ-SERVER-CAM} \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Thiết bị đầu cuối và máy chủ trong mô phỏng}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.6cm}|p{4.0cm}|p{6.2cm}|}
+\caption{Thiết bị đầu cuối và máy chủ theo sơ đồ chuẩn} \label{tab:endpoints} \\
+\hline
+\textbf{Vị trí} & \textbf{Thiết bị} & \textbf{Ghi chú} \\ \hline
+\endhead
+Server Farm (\texttt{Server-SW}) & \texttt{MAIN-DHCP}, \texttt{MAIN-SYSLOG}, \texttt{MAIN-EMAIL}, \texttt{MAIN-FTP}, \texttt{MAIN-R}, \texttt{MAIN-WLC} & VLAN 40; \texttt{MAIN-SYSLOG} có địa chỉ \texttt{10.10.40.11} \\ \hline
+Quản trị (\texttt{Mgmt-SW}) & \texttt{MAIN-NTP}, \texttt{AAA}, \texttt{MAIN-SSH} & VLAN 90; \texttt{MAIN-NTP} \texttt{10.10.90.20}, Jump Host \texttt{MAIN-SSH} \texttt{10.10.90.30} \\ \hline
+Giám sát (\texttt{Cam-SW}) & \texttt{MAIN-CAM1}, \texttt{MAIN-CAM2}, \texttt{MAIN-SERVER-CAM} & VLAN 70 \\ \hline
+Tòa A (\texttt{SW-MAIN-A}) & \texttt{MAIN-PC-STAFFA}, \texttt{MAIN-A-VOICE}, \texttt{MAIN-A-P}, \texttt{MAIN-A-AP} & Máy trạm, IP phone, máy in, AP \\ \hline
+Tòa B (\texttt{SW-MAIN-B}) & \texttt{MAIN-PC-STAFFB}, \texttt{MAIN-B-P}, \texttt{MAIN-B-AP}, \texttt{MAIN-B-GUEST} & \texttt{MAIN-B-GUEST} là smartphone khách (VLAN 60) \\ \hline
+DMZ (\texttt{DMZ-SW}) & \texttt{DMZ-WEB}, \texttt{DMZ-SERVER}, \texttt{DMZ-DNS} & \texttt{DMZ-WEB} \texttt{10.10.50.10} (Static NAT \texttt{203.162.10.3}); \texttt{DMZ-SERVER} \texttt{10.10.50.11} (xác nhận qua ảnh \texttt{DMZ\_01.png}) \\ \hline
+Internet & \texttt{INTERNET WEB}, \texttt{REMOTE} & \texttt{INTERNET WEB} \texttt{192.0.2.10}; \texttt{REMOTE} là máy teleworker thử VPN \\ \hline
+DBP & \texttt{DBP-PC1/2/3}, \texttt{DBP-P}, \texttt{DBP-DHCP}, \texttt{DBP-SERVER-CAM}, \texttt{DBP-AP}, \texttt{DBP-CAM}, \texttt{DBP-GUEST} & Máy chủ DHCP đặt tại chi nhánh \\ \hline
+BHTQ & \texttt{BHTQ-PC1/2/3}, \texttt{BHTQ-P}, \texttt{BHTQ-DHCP}, \texttt{BHTQ-SERVER-CAM}, \texttt{BHTQ-AP}, \texttt{BHTQ-CAM}, \texttt{BHTQ-GUEST} & Tương tự DBP \\ \hline
+\end{longtable}
+\end{small}
+\noindent Sơ đồ chỉ vẽ các thiết bị đầu cuối đại diện; quy mô 600 máy trạm tại Main Site và 260 máy tại mỗi chi nhánh là giả định thiết kế theo đề bài. Các hệ thống nghiệp vụ bệnh viện (HIS, RIS--PACS, LIS, CRM) là phần mềm ứng dụng, không được mô phỏng bằng thiết bị riêng trong Packet Tracer.
+
+\subsubsection{Thiết bị thực tế tương ứng khi triển khai thật}
+\label{sec:real-devices}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.4cm}|p{4.6cm}|p{6.8cm}|}
+\caption{Gợi ý thiết bị thật (cần chốt theo báo giá)} \label{tab:real_devices} \\
+\hline
+\textbf{Vai trò} & \textbf{Gợi ý thiết bị} & \textbf{Thông số điển hình cần có} \\ \hline
+\endhead
+Core (L3) & Catalyst 9300/9500 & 24--48 cổng 10G, stacking/StackWise, PoE+ không bắt buộc \\ \hline
+Access & Catalyst 9200/2960-X, PoE+ & 24/48 cổng 1G PoE+, uplink 10G (SFP+) \\ \hline
+Firewall & Cisco Firepower 1120/2110 hoặc tương đương & Throughput khi bật IPS tối thiểu 2\,Gbps, chạy HA Active/Standby \\ \hline
+Router WAN & Cisco ISR 4331/4431 & Hỗ trợ IPsec, QoS, 2 cổng WAN \\ \hline
+Wireless & Catalyst 9120 + WLC 9800 & Wi-Fi 6, 802.1X \\ \hline
+Camera/NVR & Camera IP PoE 4\,MP, NVR 64 kênh & Lưu trữ theo số ngày yêu cầu \\ \hline
+\end{longtable}
+\end{small}
+\noindent Packet Tracer không có IPS/IDS và failover firewall ASA, nên các tính năng này chỉ nằm trong thiết kế đích.
+
+\subsection{Quy hoạch IP}
+
+\subsubsection{Dải địa chỉ tổng}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.4cm}|p{3.2cm}|p{7.0cm}|}
+\caption{Dải địa chỉ của các site và mạng liên kết} \label{tab:ip_ranges} \\
+\hline
+\textbf{Site / mạng} & \textbf{Dải} & \textbf{Ghi chú} \\ \hline
+\endhead
+Main Site & \texttt{10.10.0.0/16} & Tóm tắt route về Main \\ \hline
+DBP & \texttt{10.20.0.0/16} & \\ \hline
+BHTQ & \texttt{10.30.0.0/16} & \\ \hline
+WAN điểm--điểm & \texttt{10.255.0.0/24} & Các liên kết \texttt{/30} \\ \hline
+Internet mô phỏng & \texttt{203.162.10.0/29} & \texttt{ISP1-R} \texttt{.1}, \texttt{MAIN-FW-02} \texttt{.2}, Web NAT \texttt{.3} \\ \hline
+Remote-access VPN & \texttt{10.10.200.0/24} & Client nhận \texttt{10.10.200.10} (VPN-RA-01) \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{VLAN và subnet tại Main Site}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{1.3cm}|p{2.4cm}|p{2.6cm}|p{3.0cm}|p{4.5cm}|}
+\caption{Quy hoạch VLAN, subnet và HSRP tại Main Site} \label{tab:vlan_mainsite} \\
+\hline
+\textbf{VLAN} & \textbf{Tên} & \textbf{Subnet} & \textbf{VIP HSRP} & \textbf{Ghi chú} \\ \hline
+\endhead
+10 & Staff-A & \texttt{10.10.10.0/23} & \texttt{10.10.10.1} & DHCP relay tới \texttt{MAIN-DHCP} \\ \hline
+20 & Staff-B & \texttt{10.10.20.0/23} & \texttt{10.10.20.1} & Khối hành chính, tiếp đón; DHCP relay \\ \hline
+30 & Medical Devices & \texttt{10.10.30.0/24} & \texttt{10.10.30.1} & Chỉ quy hoạch; Packet Tracer không có thiết bị y tế nên không có thiết bị đầu cuối \\ \hline
+40 & Server Farm & \texttt{10.10.40.0/24} & \texttt{10.10.40.1} & \texttt{MAIN-DHCP}, \texttt{MAIN-SYSLOG} (\texttt{.11}), \texttt{MAIN-EMAIL}, \texttt{MAIN-FTP} \\ \hline
+50 & DMZ & \texttt{10.10.50.0/24} & \texttt{MAIN-FW-01} \texttt{.1}, \texttt{MAIN-FW-02} \texttt{.2} & \texttt{DMZ-WEB} \texttt{.10}, \texttt{DMZ-SERVER} \texttt{.11}, \texttt{DMZ-DNS} \\ \hline
+60 & Guest Wi-Fi & \texttt{10.10.60.0/22} & \texttt{10.10.60.1} & ACL cô lập \\ \hline
+70 & Camera & \texttt{10.10.70.0/24} & \texttt{10.10.70.1} & \\ \hline
+80 & Voice & \texttt{10.10.80.0/24} & \texttt{10.10.80.1} & QoS \\ \hline
+90 & Management & \texttt{10.10.90.0/24} & \texttt{10.10.90.1} & \texttt{MAIN-NTP} \texttt{.20}, \texttt{MAIN-SSH} \texttt{.30}, \texttt{AAA}, AP \\ \hline
+250 & Transit Inside & \texttt{10.10.250.0/29} & \texttt{10.10.250.1} & Core $\leftrightarrow$ \texttt{MAIN-FW-01} Gi1/4 (\texttt{10.10.250.4}) \\ \hline
+253 & Inside Backup & \texttt{10.10.253.0/29} & -- & \texttt{MAIN-CORE-SW2} $\leftrightarrow$ \texttt{MAIN-FW-01} Gi1/5 (\texttt{10.10.253.1}) \\ \hline
+99 & Native (L2) & -- & -- & Chỉ là native VLAN trên trunk, không có IP \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{VLAN tại các chi nhánh}
+\begin{small}
+\begin{longtable}{|c|l|l|c|}
+\caption{VLAN và subnet tại DBP và BHTQ} \label{tab:vlan_branch} \\
+\hline
+\textbf{VLAN} & \textbf{DBP} & \textbf{BHTQ} & \textbf{VIP HSRP} \\ \hline
+\endhead
+10 & \texttt{10.20.10.0/24} & \texttt{10.30.10.0/24} & \texttt{.1} \\ \hline
+30 & \texttt{10.20.30.0/24} & \texttt{10.30.30.0/24} & \texttt{.1} \\ \hline
+40 & \texttt{10.20.40.0/24} & \texttt{10.30.40.0/24} & \texttt{.1} \\ \hline
+70 & \texttt{10.20.70.0/24} & \texttt{10.30.70.0/24} & \texttt{.1} \\ \hline
+90 & \texttt{10.20.90.0/24} & \texttt{10.30.90.0/24} & \texttt{.1} \\ \hline
+99 & \texttt{10.20.99.0/24} & \texttt{10.30.99.0/24} & \texttt{.1} \\ \hline
+\end{longtable}
+\end{small}
+\noindent Router R1 dùng \texttt{.2}, R2 dùng \texttt{.3} trên mỗi subinterface. VLAN 99 tại chi nhánh dùng cho liên kết định tuyến/HSRP, trunk dùng VLAN 1 làm native và VLAN 99 được gắn thẻ. \textbf{Lưu ý dung lượng:} 260 máy trạm (cộng $20\%$ tăng trưởng thành 312) không vừa subnet \texttt{/24} ở VLAN 10; nếu giữ đúng yêu cầu đề bài thì phải đổi VLAN 10 chi nhánh sang \texttt{/23} (xem Bước~6).
+
+\subsubsection{Mạng WAN điểm--điểm /30}
+\begin{small}
+\begin{longtable}{|l|l|l|l|}
+\caption{Các liên kết WAN điểm--điểm} \label{tab:wan_p2p} \\
+\hline
+\textbf{Liên kết} & \textbf{Subnet} & \textbf{Đầu A} & \textbf{Đầu B} \\ \hline
+\endhead
+\texttt{MAIN-WAN-R1} -- \texttt{Carrier-R} & \texttt{10.255.0.0/30} & \texttt{.1} (\texttt{MAIN-WAN-R1}) & \texttt{.2} (\texttt{Carrier-R}) \\ \hline
+\texttt{MAIN-WAN-R2} -- \texttt{Carrier-R} & \texttt{10.255.0.4/30} & \texttt{.5} (\texttt{MAIN-WAN-R2}) & \texttt{.6} (\texttt{Carrier-R}) \\ \hline
+\texttt{DBP-R1} -- \texttt{Carrier-R} & \texttt{10.255.0.8/30} & \texttt{.9} (\texttt{Carrier-R}) & \texttt{.10} (\texttt{DBP-R1}) \\ \hline
+\texttt{BHTQ-R1} -- \texttt{Carrier-R} & \texttt{10.255.0.12/30} & \texttt{.13} (\texttt{Carrier-R}) & \texttt{.14} (\texttt{BHTQ-R1}) \\ \hline
+\texttt{DBP-R2} -- \texttt{ISP2-R} & \texttt{10.255.0.16/30} & \texttt{.17} (\texttt{ISP2-R}) & \texttt{.18} (\texttt{DBP-R2}) \\ \hline
+\texttt{BHTQ-R2} -- \texttt{ISP2-R} & \texttt{10.255.0.20/30} & \texttt{.21} (\texttt{ISP2-R}) & \texttt{.22} (\texttt{BHTQ-R2}) \\ \hline
+\texttt{MAIN-WAN-R2} -- \texttt{ISP2-R} & \texttt{10.255.0.24/30} & \texttt{.25} (\texttt{ISP2-R}) & \texttt{.26} (\texttt{MAIN-WAN-R2}) \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Mạng vùng biên Main}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.2cm}|p{2.8cm}|p{7.8cm}|}
+\caption{Các mạng tại vùng biên Main Site} \label{tab:edge_nets} \\
+\hline
+\textbf{Mạng} & \textbf{Subnet} & \textbf{Thiết bị} \\ \hline
+\endhead
+Internet & \texttt{203.162.10.0/29} & \texttt{ISP1-R} \texttt{.1}, \texttt{MAIN-FW-02} outside \texttt{.2}, NAT Web \texttt{.3} \\ \hline
+DMZ & \texttt{10.10.50.0/24} & \texttt{MAIN-FW-01} dmz \texttt{.1}, \texttt{MAIN-FW-02} dmz \texttt{.2}, \texttt{DMZ-WEB} \texttt{.10}, \texttt{DMZ-SERVER} \texttt{.11} \\ \hline
+WAN chính & \texttt{10.10.251.0/29} & \texttt{MAIN-FW-01} wan \texttt{.1}, \texttt{MAIN-WAN-R1} \texttt{.3} \\ \hline
+WAN dự phòng & \texttt{10.10.252.0/29} & \texttt{MAIN-FW-01} backup-wan \texttt{.1}, \texttt{MAIN-WAN-R2} \texttt{.4} \\ \hline
+Inside transit & \texttt{10.10.250.0/29} & VIP Core \texttt{.1}, \texttt{MAIN-CORE-SW1} \texttt{.2}, \texttt{MAIN-CORE-SW2} \texttt{.3}, \texttt{MAIN-FW-01} inside \texttt{.4} \\ \hline
+Inside backup & \texttt{10.10.253.0/29} & \texttt{MAIN-FW-01} inside-backup \texttt{.1}, \texttt{MAIN-CORE-SW2} \texttt{.2}; liên kết đang down (cổng shutdown) trên sơ đồ \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Sơ đồ đi dây (cabling)}
+
+\subsubsection{Đi dây vật lý tại Main Site}
+\begin{itemize}[noitemsep,topsep=2pt]
+    \item Trung tâm dữ liệu, IT và MDF đặt trong phòng riêng, cách tòa A và B \textbf{50\,m}. Do khoảng cách cộng đường đi trong tòa vượt giới hạn 90\,m của cáp đồng, dùng \textbf{cáp quang đa mode} (OM3/OM4) nối MDF với IDF của từng tòa; trong tòa dùng Cat6.
+    \item Mỗi tầng một IDF (tòa A và B mỗi tòa 5 tầng); gộp về switch tòa (\texttt{SW-MAIN-A}, \texttt{SW-MAIN-B}) rồi uplink về hai Core.
+    \item Mọi uplink Access $\to$ Core dùng \textbf{EtherChannel LACP}; hai Core nối nhau bằng \textbf{Port-channel 1} (hai cáp).
+\end{itemize}
+
+\subsubsection{Bảng kết nối chính (logic)}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{3.0cm}|p{2.2cm}|p{3.6cm}|p{4.8cm}|}
+\caption{Kết nối logic giữa các thiết bị chính} \label{tab:cabling} \\
+\hline
+\textbf{Từ} & \textbf{Cổng} & \textbf{Đến} & \textbf{Cổng / ghi chú} \\ \hline
+\endfirsthead
+\hline \textbf{Từ} & \textbf{Cổng} & \textbf{Đến} & \textbf{Cổng / ghi chú} \\ \hline
+\endhead
+\texttt{MAIN-CORE-SW1} & Fa0/2, Fa0/7 & \texttt{MAIN-CORE-SW2} & Port-channel 1 (LACP), trunk \\ \hline
+\texttt{MAIN-CORE-SW1} & (uplink) & \texttt{MAIN-FW-01} & Gi1/4 (inside), VLAN 250 \\ \hline
+\texttt{MAIN-CORE-SW2} & (uplink) & \texttt{MAIN-FW-01} & Gi1/5 (inside-backup), VLAN 253, đang shutdown \\ \hline
+\texttt{MAIN-CORE-SW1/2} & (uplink) & \texttt{SW-MAIN-A/B}, \texttt{Server-SW}, \texttt{Mgmt-SW}, \texttt{Cam-SW} & Trunk, EtherChannel \\ \hline
+\texttt{MAIN-FW-01} & Gi1/3 & \texttt{DMZ-SW} & dmz, \texttt{10.10.50.1} \\ \hline
+\texttt{MAIN-FW-02} & Gi1/2 & \texttt{DMZ-SW} & dmz, \texttt{10.10.50.2} \\ \hline
+\texttt{MAIN-FW-02} & Gi1/1 & \texttt{ISP1-R} & outside, \texttt{203.162.10.2/29} \\ \hline
+\texttt{MAIN-VPN} & -- & \texttt{ISP1-SW}, \texttt{DMZ-SW}, \texttt{MAIN-FW-01} & Cổng VPN truy cập từ xa \\ \hline
+\texttt{MAIN-FW-01} & Gi1/2 & \texttt{MAIN-WAN1-SW} & wan \\ \hline
+\texttt{MAIN-WAN1-SW} & -- & \texttt{MAIN-WAN-R1} & Gi0/0 \\ \hline
+\texttt{MAIN-FW-01} & Gi1/1 & \texttt{MAIN-WAN2-SW} & backup-wan \\ \hline
+\texttt{MAIN-WAN2-SW} & -- & \texttt{MAIN-WAN-R2} & Gi0/0 \\ \hline
+\texttt{MAIN-WAN-R1} & Serial0/3/0 & \texttt{Carrier-R} & \texttt{10.255.0.0/30}, OSPF cost 10 \\ \hline
+\texttt{MAIN-WAN-R2} & Gi0/1 & \texttt{ISP2-R} & \texttt{10.255.0.24/30} \\ \hline
+\texttt{Carrier-R} & Serial & \texttt{DBP-R1}, \texttt{BHTQ-R1} & \texttt{10.255.0.8/30}, \texttt{10.255.0.12/30} \\ \hline
+\texttt{ISP2-R} & Gi0/1, Gi0/2 & \texttt{DBP-R2}, \texttt{BHTQ-R2} & \texttt{10.255.0.16/30}, \texttt{10.255.0.20/30} \\ \hline
+\texttt{DBP-R2} / \texttt{DBP-R1} & Gi0/0 (trunk) & \texttt{DBP-SW1} / \texttt{DBP-SW2} & Subinterface Gi0/0.10/30/40/70/90/99; hai switch nối nhau \\ \hline
+\texttt{BHTQ-R2} / \texttt{BHTQ-R1} & Gi0/0 (trunk) & \texttt{BHTQ-SW1} / \texttt{BHTQ-SW2} & Như DBP \\ \hline
+\end{longtable}
+\end{small}
+\noindent Số cổng cụ thể trên các switch truy cập và thứ tự cổng Serial của \texttt{Carrier-R} cần đối chiếu lại với tệp mô phỏng; cổng Serial của \texttt{MAIN-WAN-R2} ghi trong báo cáo chưa khớp hoàn toàn với cấu hình.
+
+\subsubsection{Hai đường WAN giữa Main Site và chi nhánh}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.8cm}|p{6.6cm}|p{4.4cm}|}
+\caption{Đường WAN chính và dự phòng} \label{tab:wan_paths} \\
+\hline
+\textbf{Đường} & \textbf{Đường đi} & \textbf{Cơ chế} \\ \hline
+\endhead
+\textbf{Chính (leased line)} & \texttt{MAIN-FW-01} wan $\to$ \texttt{MAIN-WAN1-SW} $\to$ \texttt{MAIN-WAN-R1} $\to$ \texttt{Carrier-R} $\to$ \texttt{DBP-R1} / \texttt{BHTQ-R1} & OSPF Area 0, cost 10 \\ \hline
+\textbf{Dự phòng (broadband)} & \texttt{MAIN-FW-01} backup-wan $\to$ \texttt{MAIN-WAN2-SW} $\to$ \texttt{MAIN-WAN-R2} $\to$ \texttt{ISP2-R} $\to$ \texttt{DBP-R2} / \texttt{BHTQ-R2} & Floating static, AD 150 (chi nhánh), AD 10 (\texttt{MAIN-FW-01}) \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Công nghệ WAN: các phương án và chi phí}
+Đề bài yêu cầu liệt kê các phương án, đề xuất chi phí và phân tích ưu nhược điểm. Chi phí dưới đây là \textbf{ước lượng tương đối, mang tính minh họa}, cần thay bằng báo giá nhà mạng thực.
+
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{2.4cm}|p{3.0cm}|p{1.8cm}|p{3.3cm}|p{3.3cm}|}
+\caption{So sánh các phương án công nghệ WAN} \label{tab:wan_options} \\
+\hline
+\textbf{Phương án} & \textbf{Mô tả} & \textbf{Chi phí tương đối} & \textbf{Ưu điểm} & \textbf{Nhược điểm} \\ \hline
+\endhead
+\textbf{Leased line} & Đường truyền riêng điểm--điểm Main $\leftrightarrow$ từng chi nhánh & Cao & Băng thông cam kết, độ trễ thấp, riêng biệt & Đắt; mở rộng thêm site tốn kém \\ \hline
+\textbf{MPLS L3VPN} & Nhà mạng cấp VPN lớp 3, QoS theo lớp dịch vụ & Cao -- trung bình & SLA, QoS, dễ mở rộng site & Phí tháng cao; phụ thuộc nhà mạng \\ \hline
+\textbf{SD-WAN trên Internet} & Overlay IPsec trên nhiều đường Internet, điều khiển tập trung & Trung bình -- thấp & Rẻ, linh hoạt, dùng nhiều đường, quản trị tập trung & Chất lượng phụ thuộc Internet; cần bản quyền/thiết bị SD-WAN \\ \hline
+\textbf{IPsec VPN trên broadband} & Đường hầm site-to-site qua Internet thường & Thấp & Rẻ, triển khai nhanh & Không cam kết chất lượng \\ \hline
+\textbf{Hybrid (chọn)} & Leased line/MPLS làm chính + broadband IPsec làm dự phòng & Trung bình & Cân bằng chi phí và độ tin cậy & Cấu hình định tuyến phức tạp hơn \\ \hline
+\end{longtable}
+\end{small}
+\noindent \textbf{Phương án chọn: hybrid.} Trong mô phỏng, \texttt{Carrier-R} giả lập leased line/MPLS (OSPF), \texttt{ISP2-R} giả lập broadband (floating static) và có IPsec site-to-site giữa các router WAN (ca \texttt{VPN-S2S-01}).

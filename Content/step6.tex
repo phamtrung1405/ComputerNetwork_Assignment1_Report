@@ -1,0 +1,68 @@
+\section{Bước 6: Đánh giá lại thiết kế, vấn đề còn lại và định hướng phát triển}
+\label{sec:step6}
+
+\subsection{Đánh giá theo tiêu chí}
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{2.2cm}|p{4.6cm}|p{4.8cm}|p{1.9cm}|}
+\caption{Đánh giá thiết kế theo các tiêu chí của đề bài} \label{tab:evaluation} \\
+\hline
+\textbf{Tiêu chí} & \textbf{Đã đạt} & \textbf{Còn hạn chế} & \textbf{Đánh giá} \\ \hline
+\endfirsthead
+\hline \textbf{Tiêu chí} & \textbf{Đã đạt} & \textbf{Còn hạn chế} & \textbf{Đánh giá} \\ \hline
+\endhead
+\textbf{Độ tin cậy (HA)} & Core đôi + HSRP + LACP (thử nghiệm 4.1: 0\% mất gói); chi nhánh 2 router HSRP + \texttt{standby track}; WAN chính/phụ; failover BHTQ rơi 1 gói & Firewall không HA (hai ASA độc lập); \texttt{DMZ-SW} là điểm hỏng đơn; một ISP phía Internet; \texttt{Server-SW}, \texttt{Mgmt-SW}, \texttt{Cam-SW} chỉ có một switch; tuyến VLAN 253 chưa kiểm chứng & Khá \\ \hline
+\textbf{Dễ nâng cấp, mở rộng} & Subnet dư (\texttt{/23}, \texttt{/22}); tóm tắt \texttt{/16} theo site; cấu trúc module & VLAN 10 chi nhánh \texttt{/24} không đủ 260 máy ($+20\%$); chưa dùng quản trị tập trung/automation & Khá \\ \hline
+\textbf{Phần mềm hỗ trợ đa dạng} & Server Farm VLAN 40 cho các dịch vụ hạ tầng; DMZ cho web/DNS; thoại IP (VLAN 80) & Chưa kiểm thử ứng dụng thật; HIS, RIS--PACS, LIS, CRM không được mô phỏng; Packet Tracer chỉ mô phỏng dịch vụ cơ bản (HTTP, DNS, DHCP, email) & Trung bình \\ \hline
+\textbf{An toàn (safety)} & Camera VLAN 70 riêng; Medical VLAN 30 được quy hoạch riêng; nguồn điện và làm mát nêu ở checklist Bước~1 & Chưa mô phỏng UPS, chống sét, kiểm soát ra vào (thuộc khảo sát vật lý); VLAN 30 không có thiết bị y tế trong Packet Tracer & Chưa kiểm chứng \\ \hline
+\textbf{Bảo mật mạng} & Hai tầng firewall, DMZ, NAT/PAT, security level theo zone, IPsec site-to-site và remote-access VPN, VLAN quản trị & \textbf{Guest vẫn ping được DMZ (SEC-01 FAIL)}; DMZ cho phép rộng; chưa có IDS/IPS (PT không hỗ trợ); ACL quản trị chưa áp dụng đầy đủ; chưa có AAA/802.1X thực tế & Cần cải thiện \\ \hline
+\textbf{Hiệu năng} & Tính băng thông theo Bước~3; EtherChannel & Chưa có QoS đã kiểm thử; chưa đo throughput & Chưa kiểm chứng \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Vấn đề còn lại của dự án}
+
+\subsubsection{Lỗi và điểm yếu đã biết}
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|c|p{4.3cm}|p{3.4cm}|p{5.0cm}|}
+\caption{Các vấn đề còn lại và hướng xử lý} \label{tab:open_issues} \\
+\hline
+\textbf{\#} & \textbf{Vấn đề} & \textbf{Hậu quả} & \textbf{Hướng xử lý} \\ \hline
+\endfirsthead
+\hline \textbf{\#} & \textbf{Vấn đề} & \textbf{Hậu quả} & \textbf{Hướng xử lý} \\ \hline
+\endhead
+1 & Guest ping được \texttt{10.10.50.10} (SEC-01) & Vi phạm yêu cầu khách không truy cập LAN/DMZ & Áp dụng \texttt{ACL-GUEST-ISOLATE} (có \texttt{deny 10.0.0.0/8} trước \texttt{permit web}) lên \texttt{Vlan60}, chạy lại \\ \hline
+2 & \texttt{DMZ-SW} là điểm hỏng đơn giữa hai firewall & Mất DMZ và đường Internet $\leftrightarrow$ nội bộ & Thêm switch thứ hai hoặc dùng EtherChannel; hoặc ghép hai ASA thành cặp HA (thiết bị thật) \\ \hline
+3 & DMZ cho phép lưu lượng rộng & DMZ bị khai thác có thể đi sâu vào mạng & Chỉ cho phép đúng luồng (HTTP/HTTPS tới Web, DNS), chặn mặc định DMZ $\to$ inside \\ \hline
+4 & Một số ACL đã viết nhưng chưa gắn vào interface & Chính sách không có hiệu lực & Gắn \texttt{ip access-group}/\texttt{access-group}, kiểm tra bộ đếm \texttt{show access-lists} \\ \hline
+5 & Lỗi/khác biệt route trên \texttt{MAIN-FW-01} (next-hop, \texttt{route wan}/\texttt{backup-wan}) & Đường dự phòng có thể không như thiết kế & Kiểm tra \texttt{show route}, thử tắt đường chính \\ \hline
+6 & Trộn OSPF và định tuyến tĩnh/mặc định & Định tuyến bất đối xứng, firewall mất state & Dùng AD nhất quán; mọi đường dự phòng là floating static; redistribute có kiểm soát \\ \hline
+7 & Chỉ có một ISP phía Internet (\texttt{ISP1-R}) & Không đạt yêu cầu 2$\times$DSL có load-balancing của đề bài & Thêm ISP thứ hai + PBR/ECMP hoặc SLA tracking trên \texttt{MAIN-FW-02} (thiết kế đích) \\ \hline
+8 & VLAN 10 chi nhánh \texttt{/24} (254 host) so với 260 máy $+20\% = 312$ & Cạn địa chỉ & Đổi sang \texttt{/23} hoặc tách thêm VLAN \\ \hline
+9 & Không có load balancer, IPS/IDS, phát hiện phishing trong Packet Tracer & Không đạt đầy đủ yêu cầu bảo mật cao & Nêu trong thiết kế đích: Firepower, WAF/LB, email gateway \\ \hline
+10 & Liên kết \texttt{inside-backup} (\texttt{Gi1/5}, VLAN 253) đang shutdown/down & Chưa kiểm thử được failover khi \texttt{MAIN-CORE-SW1} hỏng & \texttt{no shutdown}, kiểm thử thử nghiệm 4.2 và chụp ảnh \\ \hline
+11 & Khác biệt giữa báo cáo, sơ đồ và cấu hình (DHCP chi nhánh: máy chủ cục bộ so với \texttt{ip helper-address}; địa chỉ \texttt{logging}; decrement track; native VLAN 99; cổng Serial của \texttt{MAIN-WAN-R2}) & Tài liệu và mô phỏng không đồng nhất & Đối chiếu với tệp mô phỏng rồi sửa một nơi \\ \hline
+12 & Hostname trong cấu hình (\texttt{ASA1}, \texttt{ASA2}, \texttt{Core-SW1/2}, \texttt{WAN-R1/R2}, \dots) chưa trùng tên trên sơ đồ; một số ảnh kiểm thử còn nhãn phiên bản cũ & Báo cáo khó đọc, ảnh không khớp sơ đồ & Đặt \texttt{hostname MAIN-FW-01}\dots; chụp lại ảnh theo danh sách kèm theo \\ \hline
+\end{longtable}
+\end{small}
+
+\subsubsection{Phạm vi chưa làm (talented engineer)}
+Đề yêu cầu cho chương trình talented engineer: kế hoạch bảo mật, ACL, IDS/IPS và hướng dẫn best practice. Hiện đã có kế hoạch, ACL và VPN (phần~\ref{sec:security_architecture}); \textbf{chưa có IDS/IPS} và best-practice guide hoàn chỉnh.
+
+\subsection{Định hướng phát triển}
+\begin{small}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|p{2.2cm}|p{11.6cm}|}
+\caption{Định hướng phát triển} \label{tab:roadmap} \\
+\hline
+\textbf{Giai đoạn} & \textbf{Hạng mục} \\ \hline
+\endhead
+Ngắn hạn & Sửa SEC-01; gắn các ACL; thống nhất tên thiết bị và hostname; hoàn thiện kiểm thử Bước~5; bổ sung bằng chứng \\ \hline
+Trung hạn & Firewall HA (Active/Standby); hai nhà mạng Internet; QoS; 802.1X + RADIUS; Syslog/SNMP tập trung \\ \hline
+Dài hạn & SD-WAN thay hoặc bổ sung leased line; IPS/IDS (Firepower); WAF + load balancer; NAC; tự động hóa cấu hình (Ansible); 10/40\,GbE cho Core và hệ thống PACS \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Kết luận}
+Thiết kế đạt phần lớn yêu cầu về phân cấp, dự phòng, phân vùng và WAN. Các điểm cần xử lý trước khi nộp là: \textbf{SEC-01}; các kiểm thử còn thiếu (cùng VLAN, Internet $\to$ DMZ qua NAT, SSH, camera, dự phòng lõi qua VLAN 253); và tính đồng nhất giữa báo cáo, sơ đồ và tệp mô phỏng. Các yêu cầu IPS/IDS, load balancer, HA firewall và hai ISP được trình bày như \textbf{thiết kế đích}, không phải kết quả mô phỏng.
