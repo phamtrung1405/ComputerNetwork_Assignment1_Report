@@ -13,9 +13,9 @@
 3. **Tua nhanh thời gian hội tụ (Fast Forward Time):**
    * Ngay khi vừa mở file, các giao thức Spanning Tree (Rapid-PVST+), EtherChannel (LACP), HSRP và OSPF cần khoảng 30–50 giây thực tế để đàm phán trạng thái.
    * Bấm tổ hợp phím **`Alt + D`** (hoặc bấm nút *Fast Forward Time* ở góc dưới bên trái) **2–3 lần** cho đến khi toàn bộ các biểu tượng liên kết chuyển từ màu cam sang **tam giác xanh lá**.
-4. **Thông tin đăng nhập thiết bị (Mặc định toàn hệ thống):**
-   * **Console / Enable Password:** `1` (hoặc mật khẩu bí mật đã mã hóa MD5 trên từng thiết bị).
-   * **Tài khoản quản trị SSH:** Username `netadmin` | SSH Version `2` | Chỉ cho phép truy cập từ máy trạm quản trị `JUMP_HOST` (`10.10.90.30` thông qua `access-list 10`).
+4. **Thông tin đăng nhập thiết bị:**
+   * **Console / Enable Password:** `[REDACTED]`; thay bằng mật khẩu riêng, đủ mạnh khi chạy mô phỏng.
+   * **Tài khoản quản trị SSH:** Username `[ADMIN_USER]` | SSH Version `2` | Chỉ cho phép truy cập từ máy trạm quản trị `JUMP_HOST` (`10.10.90.30` thông qua `access-list 10`). Không ghi mật khẩu vào tài liệu.
 
 ### 1.2. Quy tắc quản lý phiên bản & An toàn dữ liệu
 * Trước khi thực hiện bất kỳ thao tác ngắt mạch (`shutdown`) hoặc thay đổi định tuyến nào trong lúc Demo, luôn sao lưu tệp sang phiên bản mới bằng **File $\rightarrow$ Save As...** (ví dụ: `v2.0_Final_Verified.pkt` $\rightarrow$ `v2.1_Demo_Backup.pkt`).
@@ -32,8 +32,8 @@
 | **Main Site (HCMC)** | `Core-SW1` (Active), `Core-SW2` (Standby), `Server-SW`, `Mgmt-SW`, `Cam-SW`, `Access-A`, `Access-B` | `10.10.0.0/16`<br>• VLAN 10: Staff-A (`10.10.10.0/23`)<br>• VLAN 20: Staff-B (`10.10.20.0/23`)<br>• VLAN 30: Medical (`10.10.30.0/24`)<br>• VLAN 40: Server Farm (`10.10.40.0/24`)<br>• VLAN 60: Guest WiFi (`10.10.60.0/22`)<br>• VLAN 70: Camera (`10.10.70.0/24`)<br>• VLAN 80: Voice (`10.10.80.0/24`)<br>• VLAN 90: Management (`10.10.90.0/24`)<br>• VLAN 99: Native Trunk | • **Core-SW1:** HSRP Active (Priority 200), STP Root Bridge (Priority 4096), OSPF RID `2.2.2.1`.<br>• **Core-SW2:** HSRP Standby (Priority 150), OSPF RID `2.2.2.2`.<br>• **Port-channel 1:** LACP Active nối `Core-SW1` $\leftrightarrow$ `Core-SW2`.<br>• **ACL-GUEST-ISOLATE:** Cô lập VLAN 60 không truy cập nội bộ `10.0.0.0/8`. |
 | **Biên & DMZ / Internet** | `ASA1`, `ASA2`, `DMZ-SW`, `WAN-R1`, `WAN-R2`, `WAN1-SW`, `WAN2-SW`, `ISP1-R` | • Transit Inside: VLAN 250 (`10.10.250.0/29`)<br>• Inside Backup: VLAN 253 (`10.10.253.0/29`)<br>• DMZ: `10.10.50.0/24`<br>• WAN1: `10.10.251.0/29` | Backup WAN: `10.10.252.0/29`<br>• Public ISP1: `203.162.10.0/29` | • **ASA1:** Phân tách 5 vùng bảo mật (`inside`, `inside-backup`, `dmz`, `wan`, `backup-wan`).<br>• **ASA2:** Thực hiện Static NAT cho Web Server (`10.10.50.10` $\leftrightarrow$ `203.162.10.3`) và Dynamic PAT ra Internet. |
 | **Mạng truyền dẫn WAN** | `Carrier-R` (Chính), `ISP2-R` (Dự phòng) | • Leased Line: `10.255.0.0/30` (WAN-R1), `10.255.0.4/30` (WAN-R2), `10.255.0.8/30` (DBP-R1), `10.255.0.12/30` (BHTQ-R1)<br>• Broadband: `10.255.0.16/30` (DBP-R2), `10.255.0.20/30` (BHTQ-R2), `10.255.0.24/30` (WAN-R2) | • **Carrier-R:** Chạy OSPF Area 0 (`distance 15`, `point-to-point`) + BGP AS 65000.<br>• **ISP2-R:** Mạng dự phòng Broadband chạy định tuyến tĩnh & NAT Overload. |
-| **Chi nhánh 1 (DBP)** | `DBP-R1` (Chính), `DBP-R2` (Dự phòng), `DBP-SW1`, `DBP-SW2` | `10.20.0.0/16`<br>• VLAN 10, 30, 40, 70, 90, 99 (`10.20.x.0/24`) | • **DBP-R1:** HSRP Active (Priority 110, `track Serial0/3/0`), OSPF Cost 10 qua `Carrier-R`.<br>• **DBP-R2:** HSRP Standby (Priority 105), Floating Static Route (`AD 150`) qua `ISP2-R`. |
-| **Chi nhánh 2 (BHTQ)** | `BHTQ-R1` (Chính), `BHTQ-R2` (Dự phòng), `BHTQ-SW1`, `BHTQ-SW2` | `10.30.0.0/16`<br>• VLAN 10, 30, 40, 70, 90, 99 (`10.30.x.0/24`) | • **BHTQ-R1:** HSRP Active (Priority 110, `track Serial0/3/0`), OSPF Cost 10 qua `Carrier-R`.<br>• **BHTQ-R2:** HSRP Standby (Priority 105), Floating Static Route (`AD 150`) qua `ISP2-R`. |
+| **Chi nhánh 1 (DBP)** | `DBP-R1` (Chính), `DBP-R2` (Dự phòng), `DBP-SW1`, `DBP-SW2` | `10.20.0.0/16`<br>• VLAN 10, 30, 40, 70, 90, 99 (`10.20.x.0/24`)<br>• Trunk: native VLAN 1; VLAN 99 tagged | • **DBP-R1:** HSRP Active (Priority 110, `track Serial0/3/0`), OSPF Cost 10 qua `Carrier-R`.<br>• **DBP-R2:** HSRP Standby (Priority 105), Floating Static Route (`AD 150`) qua `ISP2-R`. |
+| **Chi nhánh 2 (BHTQ)** | `BHTQ-R1` (Chính), `BHTQ-R2` (Dự phòng), `BHTQ-SW1`, `BHTQ-SW2` | `10.30.0.0/16`<br>• VLAN 10, 30, 40, 70, 90, 99 (`10.30.x.0/24`)<br>• Trunk: native VLAN 1; VLAN 99 tagged | • **BHTQ-R1:** HSRP Active (Priority 110, `track Serial0/3/0`), OSPF Cost 10 qua `Carrier-R`.<br>• **BHTQ-R2:** HSRP Standby (Priority 105), Floating Static Route (`AD 150`) qua `ISP2-R`. |
 
 ### 2.2. Các giả định thiết kế (Design Assumptions)
 1. **Giả định hạ tầng truyền dẫn nhà mạng:**
@@ -67,7 +67,7 @@ Do giới hạn kiến trúc của công cụ mô phỏng sự kiện **Cisco Pa
 Kịch bản dưới đây được thiết kế theo trình tự 5 phần (thời lượng dự kiến 15–20 phút) nhằm chứng minh toàn diện khả năng vận hành, bảo mật và tự động phục hồi sau sự cố của hệ thống.
 
 ### Giai đoạn 1: Kiểm tra trạng thái vận hành chuẩn (Normal Operation)
-* **Mục tiêu:** Chứng minh toàn bộ hệ thống đã hội tụ, HSRP và OSPF hoạt động đúng vai trò thiết kế.
+* **Mục tiêu:** Kiểm tra trạng thái HSRP/OSPF trên các thiết bị và tuyến được nêu trong từng bước; không suy rộng các kết quả này thành kiểm thử đầy đủ cả 25 thiết bị.
 * **Thao tác thực hiện:**
   1. Trên **`Core-SW1`**, **`DBP-R1`**, **`BHTQ-R1`**: Chạy `show standby brief` $\rightarrow$ Xác nhận các thiết bị chính đều ở trạng thái **`Active`**, các thiết bị dự phòng (`Core-SW2`, `DBP-R2`, `BHTQ-R2`) ở trạng thái **`Standby`**.
   2. Trên **`BHTQ-R2`** và **`DBP-R2`**: Chạy `show ip ospf neighbor` $\rightarrow$ Xác nhận trạng thái láng giềng đạt **`FULL`**.
@@ -77,11 +77,11 @@ Kịch bản dưới đây được thiết kế theo trình tự 5 phần (th�
      * `tracert 10.20.40.10` $\rightarrow$ Xác nhận gói tin đi qua tuyến chính **`10.30.10.2` (BHTQ-R1) $\rightarrow$ `10.255.0.13` (Carrier-R) $\rightarrow$ `10.255.0.10` (DBP-R1) $\rightarrow$ `10.20.40.10`**.
 
 ### Giai đoạn 2: Demo Bảo mật Phân vùng, NAT & Kiểm soát Truy cập (Security & Access Control)
-* **Mục tiêu:** Chứng minh tính hiệu quả của ACL, Port-Security, SSH và NAT biên.
+* **Mục tiêu:** Thực hiện các phép thử riêng cho Guest, Web DMZ và SSH quản trị. Các kết quả này không thay thế toàn bộ test plan SEC.
 * **Thao tác thực hiện:**
-  1. **Cô lập mạng khách (Guest WiFi Isolation):** Từ thiết bị thuộc VLAN 60 (`LAP_PT` - `10.10.60.x`), ping vào máy chủ nội bộ `10.10.40.10` $\rightarrow$ **Bị chặn (Destination host unreachable)** bởi `ACL-GUEST-ISOLATE`, nhưng vẫn truy cập được Web Server ngoài Internet/DMZ.
-  2. **Truy cập dịch vụ DMZ từ Internet (Static NAT):** Từ máy khách ngoài Internet (nối qua `ISP1-R`), mở trình duyệt Web truy cập địa chỉ Public **`http://203.162.10.3`** $\rightarrow$ `ASA2` dịch địa chỉ về **`10.10.50.10`** và hiển thị thành công trang Web doanh nghiệp.
-  3. **Bảo mật quản trị (SSH & Jump Host):** Thử SSH từ một máy nhân viên thông thường (`10.10.10.x`) vào `Core-SW1` $\rightarrow$ **Bị từ chối**; thực hiện SSH từ **`JUMP_HOST` (`10.10.90.30`)** với tài khoản `netadmin` $\rightarrow$ **Đăng nhập thành công**.
+  1. **Cô lập mạng khách (Guest WiFi Isolation):** Báo cáo mô phỏng ghi nhận ping từ VLAN 60 (`LAP_PT`) tới `10.10.40.10` bị chặn. ACL đã được chỉnh để chỉ cho DNS tới máy chủ này và TCP/80, TCP/443 ra Internet; đích `10.10.50.10` thuộc `10.0.0.0/8` nên cũng phải bị chặn. **Chạy lại Guest-to-LAN, Guest-to-DMZ và Guest-to-Internet sau khi áp dụng ACL; chưa đánh dấu PASS cho cấu hình đã chỉnh nếu chưa có output mới.**
+  2. **Truy cập dịch vụ DMZ từ Internet (Static NAT):** Báo cáo mô phỏng ghi nhận từ máy khách ngoài Internet (qua `ISP1-R`) truy cập **`http://203.162.10.3`** thành công; `ASA2` ánh xạ tới **`10.10.50.10`** qua HTTP/80. Bổ sung ảnh chụp hoặc log NAT/ACL để lưu bằng chứng.
+  3. **Bảo mật quản trị (SSH & Jump Host):** Thử SSH từ một máy nhân viên thông thường (`10.10.10.x`) vào `Core-SW1` $\rightarrow$ **Bị từ chối**; báo cáo mô phỏng ghi nhận SSH từ **`JUMP_HOST` (`10.10.90.30`)** với tài khoản `[ADMIN_USER]` đăng nhập thành công. Không ghi mật khẩu; cần lưu ảnh chụp/output SSH làm bằng chứng.
 
 ### Giai đoạn 3: Demo Chuyển đổi dự phòng WAN tại Chi nhánh (Branch WAN Failover)
 * **Mục tiêu:** Chứng minh khi đứt cáp Leased Line chính, chi nhánh tự động chuyển sang đường Broadband `ISP2-R` mà không cần can thiệp thủ công.

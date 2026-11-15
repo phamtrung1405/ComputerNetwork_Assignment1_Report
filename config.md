@@ -121,7 +121,7 @@ write memory
 enable
 configure terminal
 hostname ISP1-R
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip cef
 no ipv6 cef
 no ip domain-lookup
@@ -154,7 +154,7 @@ ip classless
 ip route 10.0.0.0 255.0.0.0 203.162.10.2
 ip flow-export version 9
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -349,7 +349,7 @@ enable
 configure terminal
 hostname Core-SW1
 no profinet
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip dhcp excluded-address 10.10.20.1 10.10.20.49
 ip dhcp pool STAFF-B
  network 10.10.20.0 255.255.254.0
@@ -360,7 +360,7 @@ ip dhcp pool VLAN10_DATA
  dns-server 10.10.50.12
 exit
 ip routing
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
@@ -549,13 +549,15 @@ ip flow-export version 9
 access-list 10 permit host 10.10.90.30
 ip access-list extended ACL-GUEST-ISOLATE
  permit udp any eq bootpc any eq bootps
- permit udp any host 10.10.40.10 eq domain
+ permit udp 10.10.60.0 0.0.3.255 host 10.10.40.10 eq domain
+ permit tcp 10.10.60.0 0.0.3.255 host 10.10.40.10 eq domain
  deny ip 10.10.60.0 0.0.3.255 10.0.0.0 0.255.255.255
- permit ip any any
+ permit tcp 10.10.60.0 0.0.3.255 any eq www
+ permit tcp 10.10.60.0 0.0.3.255 any eq 443
 exit
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -581,9 +583,9 @@ enable
 configure terminal
 hostname Core-SW2
 no profinet
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip routing
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
@@ -768,13 +770,15 @@ ip flow-export version 9
 access-list 10 permit host 10.10.90.30
 ip access-list extended ACL-GUEST-ISOLATE
  permit udp any eq bootpc any eq bootps
- permit udp any host 10.10.40.10 eq domain
+ permit udp 10.10.60.0 0.0.3.255 host 10.10.40.10 eq domain
+ permit tcp 10.10.60.0 0.0.3.255 host 10.10.40.10 eq domain
  deny ip 10.10.60.0 0.0.3.255 10.0.0.0 0.255.255.255
- permit ip any any
+ permit tcp 10.10.60.0 0.0.3.255 any eq www
+ permit tcp 10.10.60.0 0.0.3.255 any eq 443
 exit
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -799,13 +803,13 @@ write memory
 enable
 configure terminal
 hostname Server-SW
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 vlan 10,20,40,60,80,90,99
@@ -876,7 +880,7 @@ ip default-gateway 10.10.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -899,13 +903,13 @@ write memory
 enable
 configure terminal
 hostname Mgmt-SW
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 1
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 vlan 90,99
@@ -956,7 +960,7 @@ ip default-gateway 10.10.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -979,13 +983,13 @@ write memory
 enable
 configure terminal
 hostname Cam-SW
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 vlan 70,90,99
@@ -1036,7 +1040,7 @@ ip default-gateway 10.10.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1059,13 +1063,13 @@ write memory
 enable
 configure terminal
 hostname Access-A
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 vlan 10,60,80,90,99
@@ -1132,7 +1136,7 @@ ip default-gateway 10.10.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1155,13 +1159,13 @@ write memory
 enable
 configure terminal
 hostname Access-B
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 vlan 20,60,90,99
@@ -1220,7 +1224,7 @@ ip default-gateway 10.10.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1243,7 +1247,7 @@ write memory
 enable
 configure terminal
 hostname WAN1-SW
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 no ip domain-lookup
 spanning-tree mode pvst
 spanning-tree extend system-id
@@ -1264,7 +1268,7 @@ interface Vlan1
 exit
 ip default-gateway 10.10.251.1
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1318,10 +1322,10 @@ write memory
 enable
 configure terminal
 hostname WAN-R2
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip cef
 no ipv6 cef
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
@@ -1388,7 +1392,7 @@ ip flow-export version 9
 access-list 10 permit host 10.10.90.30
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1413,10 +1417,10 @@ write memory
 enable
 configure terminal
 hostname WAN-R1
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip cef
 no ipv6 cef
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
@@ -1479,7 +1483,7 @@ ip flow-export version 9
 access-list 10 permit host 10.10.90.30
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1509,7 +1513,7 @@ enable
 configure terminal
 hostname ISP2-R
 no ip domain-lookup
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip cef
 no ipv6 cef
 access-list 100 deny ip host 10.255.0.25 any
@@ -1546,7 +1550,7 @@ ip route 10.10.252.0 255.255.255.248 10.255.0.26
 ip route 0.0.0.0 0.0.0.0 10.255.0.26
 ip nat inside source list 100 interface GigabitEthernet0/0 overload
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1563,7 +1567,7 @@ enable
 configure terminal
 hostname Carrier-R
 no ip domain-lookup
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip cef
 no ipv6 cef
 interface GigabitEthernet0/0
@@ -1626,7 +1630,7 @@ router bgp 65000
 exit
 ip classless
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1645,8 +1649,8 @@ hostname DBP-R2
 service timestamps log datetime msec
 no ip domain-lookup
 ip domain-name lab.test
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+enable secret [REDACTED]
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 ip cef
 no ipv6 cef
 crypto key generate rsa
@@ -1743,7 +1747,7 @@ ip classless
 ip route 0.0.0.0 0.0.0.0 10.255.0.17 150
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1766,8 +1770,8 @@ write memory
 enable
 configure terminal
 hostname DBP-R1
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+enable secret [REDACTED]
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 no ip domain-lookup
 ip domain-name lab.test
 ip ssh version 2
@@ -1892,7 +1896,7 @@ ip classless
 ip flow-export version 9
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -1917,8 +1921,8 @@ copy running-config startup-config
 enable
 configure terminal
 hostname BHTQ-R1
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+enable secret [REDACTED]
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 ip dhcp excluded-address 10.30.10.1 10.30.10.49
 ip dhcp excluded-address 10.30.10.240 10.30.10.254
 ip dhcp pool BHTQ-R1_STAFF
@@ -2058,7 +2062,7 @@ ip flow-export version 9
 access-list 10 permit host 10.10.90.30
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -2083,8 +2087,8 @@ copy running-config startup-config
 enable
 configure terminal
 hostname BHTQ-R2
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
-username netadmin privilege 15 secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+enable secret [REDACTED]
+username [ADMIN_USER] privilege 15 secret [REDACTED]
 ip cef
 no ipv6 cef
 ip ssh version 2
@@ -2184,7 +2188,7 @@ ip flow-export version 9
 access-list 10 permit host 10.10.90.30
 logging 10.10.90.20
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -2209,13 +2213,13 @@ copy running-config startup-config
 enable
 configure terminal
 hostname DBP-SW1
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 interface FastEthernet0/1
@@ -2231,11 +2235,9 @@ interface FastEthernet0/1
 exit
 interface FastEthernet0/2
  description TO_OTHER_SW
- switchport access vlan 10
- switchport trunk native vlan 99
- switchport trunk allowed vlan 10,70,90,99
- switchport mode access
- spanning-tree portfast
+ switchport trunk native vlan 1
+ switchport trunk allowed vlan 1,10,70,90,99
+ switchport mode trunk
  no shutdown
 exit
 interface FastEthernet0/3
@@ -2258,20 +2260,20 @@ interface FastEthernet0/4
  no shutdown
 exit
 interface FastEthernet0/24
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/1
  description TO_DBP_R2
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/2
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport mode trunk
  no shutdown
 exit
@@ -2288,7 +2290,7 @@ ip default-gateway 10.20.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -2311,22 +2313,20 @@ copy running-config startup-config
 enable
 configure terminal
 hostname DBP-SW2
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 interface FastEthernet0/1
  description TO_OTHER_SW
- switchport access vlan 40
- switchport trunk native vlan 99
- switchport trunk allowed vlan 10,70,90,99
- switchport mode access
- spanning-tree portfast
+ switchport trunk native vlan 1
+ switchport trunk allowed vlan 1,10,70,90,99
+ switchport mode trunk
  no shutdown
 exit
 interface FastEthernet0/2
@@ -2370,21 +2370,21 @@ interface FastEthernet0/6
  no shutdown
 exit
 interface FastEthernet0/24
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/1
  description TO_DBP_R1
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/2
- switchport trunk native vlan 99
- switchport trunk allowed vlan 10,70,90,99
+ switchport trunk native vlan 1
+ switchport trunk allowed vlan 1,10,70,90,99
  switchport mode trunk
  no shutdown
 exit
@@ -2401,7 +2401,7 @@ ip default-gateway 10.20.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -2424,13 +2424,13 @@ copy running-config startup-config
 enable
 configure terminal
 hostname BHTQ-SW2
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 interface FastEthernet0/1
@@ -2468,28 +2468,26 @@ interface FastEthernet0/4
 exit
 interface FastEthernet0/5
  description TO_OTHER_SW
- switchport access vlan 70
- switchport trunk native vlan 99
- switchport trunk allowed vlan 10,70,90,99
- switchport mode access
- spanning-tree portfast
+ switchport trunk native vlan 1
+ switchport trunk allowed vlan 1,10,70,90,99
+ switchport mode trunk
  no shutdown
 exit
 interface FastEthernet0/24
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/1
  description TO_BHTQ_R1
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/2
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport mode trunk
  no shutdown
 exit
@@ -2506,7 +2504,7 @@ ip default-gateway 10.30.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit
@@ -2529,13 +2527,13 @@ copy running-config startup-config
 enable
 configure terminal
 hostname BHTQ-SW1
-enable secret 5 $1$mERr$Wmdu8FSDG1wNa1xa4SQGi.
+enable secret [REDACTED]
 ip ssh version 2
 ip ssh authentication-retries 2
 ip ssh time-out 60
 no ip domain-lookup
 ip domain-name lab.test
-username netadmin secret 5 $1$mERr$o2Xuv2uH8EktviSiubpKv.
+username [ADMIN_USER] secret [REDACTED]
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
 interface FastEthernet0/1
@@ -2579,26 +2577,26 @@ interface FastEthernet0/4
 exit
 interface FastEthernet0/5
  description TO_OTHER_SW
- switchport trunk native vlan 99
- switchport trunk allowed vlan 10,70,90,99
+ switchport trunk native vlan 1
+ switchport trunk allowed vlan 1,10,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface FastEthernet0/24
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/1
  description TO_BHTQ_R2
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport trunk allowed vlan 1,10,30,40,70,90,99
  switchport mode trunk
  no shutdown
 exit
 interface GigabitEthernet0/2
- switchport trunk native vlan 99
+ switchport trunk native vlan 1
  switchport mode trunk
  no shutdown
 exit
@@ -2615,7 +2613,7 @@ ip default-gateway 10.30.90.1
 logging 10.10.90.20
 access-list 10 permit host 10.10.90.30
 line con 0
- password 1
+ password [REDACTED]
  logging synchronous
  login
 exit

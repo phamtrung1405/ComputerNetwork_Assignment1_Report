@@ -35,10 +35,10 @@ Nhằm tránh tình trạng rớt gói tin đầu tiên do bảng chuyển tiế
 \subsection{Thông tin xác thực và kiểm soát truy cập thiết bị}
 Toàn bộ hệ thống tuân thủ mô hình bảo mật AAA phân tầng và phòng vệ theo chiều sâu (Defense-in-Depth). Thông tin truy cập được quy định thống nhất như sau:
 \begin{itemize}[noitemsep,topsep=2pt]
-    \item \textbf{Cấp độ đặc quyền cục bộ (Console / Privileged Exec):} Mật khẩu kích hoạt chế độ đặc quyền (\texttt{enable secret}) trên toàn bộ Switch và Router được thiết lập mặc định là \texttt{1} (hoặc chuỗi mã hóa Type 5 băm một chiều MD5 theo chuẩn bảo mật Cisco IOS).
-    \item \textbf{Giao thức quản trị từ xa bảo mật (In-band SSH Management):} Áp dụng giao thức SSH Version 2 (\texttt{ip ssh version 2}), mã hóa khóa bất đối xứng RSA 1024-bit. Tài khoản quản trị tối cao:
+    \item \textbf{Cấp độ đặc quyền cục bộ (Console / Privileged Exec):} Giá trị \texttt{enable secret} đã được lược khỏi báo cáo. Cấu hình vận hành phải dùng mật khẩu riêng, đủ mạnh; không dùng mật khẩu mặc định hoặc mật khẩu dùng chung.
+    \item \textbf{Giao thức quản trị từ xa bảo mật (In-band SSH Management):} Mô hình dùng SSH Version 2 (\texttt{ip ssh version 2}); khóa RSA 1024-bit chỉ dùng cho mô phỏng, môi trường thực tế cần nâng lên tối thiểu 2048-bit. Thông tin tài khoản được ẩn:
     \begin{center}
-        Tên đăng nhập: \textbf{\texttt{netadmin}} \quad | \quad Mức đặc quyền: \textbf{\texttt{privilege 15}} \quad | \quad Mật khẩu: \textbf{\texttt{1}}
+        Tên đăng nhập: \textbf{\texttt{[ADMIN\_USER]}} \quad | \quad Mức đặc quyền: \textbf{\texttt{privilege 15}} \quad | \quad Mật khẩu: \textbf{\texttt{[REDACTED]}}
     \end{center}
     \item \textbf{Bảo vệ mặt phẳng quản trị (Management Plane Protection - MPP):} Nhằm triệt tiêu nguy cơ tấn công dò quét cổng hoặc leo thang đặc quyền từ các phân vùng người dùng nội bộ, cổng ảo VTY (0--15) trên toàn bộ thiết bị lõi đều được siết chặt bởi danh sách kiểm soát truy cập \texttt{access-class 10 in}. Chỉ duy nhất trạm nhảy quản trị được định danh (\textbf{Jump Host}) tại địa chỉ IP tĩnh \textbf{\texttt{10.10.90.30}} (thuộc VLAN 90 Management) mới được phép thiết lập phiên làm việc SSH. Mọi nỗ lực truy cập từ các phân vùng khác đều bị hủy bỏ ngay tại tầng giao vận TCP Port 22.
 \end{itemize}
@@ -134,9 +134,9 @@ Bảng~\ref{tab:device_inventory} tổng hợp thông số kỹ thuật, định
 \subsection{Quy hoạch địa chỉ IP, phân đoạn VLAN và định tuyến liên vùng}
 Hệ thống sử dụng không gian địa chỉ riêng biệt theo chuẩn RFC 1918 kết hợp kỹ thuật chia mạng con theo độ dài mặt nạ thay đổi (VLSM). Mỗi chi nhánh được gán một dải mạng \texttt{/16} riêng biệt nhằm tạo điều kiện tóm tắt địa chỉ (Route Summarization) tối ưu trên bảng định tuyến:
 \begin{itemize}
-    \item \textbf{Trụ sở chính (Main Site):} Dải mạng tổng thể \texttt{10.10.0.0/16}. Bảng~\ref{tab:vlan_mainsite} chi tiết hóa việc phân bổ VLAN và chính sách định tuyến tầng mạng.
-    \item \textbf{Chi nhánh 1 (DBP):} Dải mạng \texttt{10.20.0.0/16}, gồm các phân đoạn chức năng: VLAN 10 Khám bệnh (\texttt{10.20.10.0/24}), VLAN 30 Thiết bị y tế (\texttt{10.20.30.0/24}), VLAN 40 Máy chủ chi nhánh (\texttt{10.20.40.0/24}), VLAN 70 Camera (\texttt{10.20.70.0/24}), VLAN 90 Quản trị (\texttt{10.20.90.0/24}), và VLAN 99 Native Trunking (\texttt{10.20.99.0/24}).
-    \item \textbf{Chi nhánh 2 (BHTQ):} Dải mạng \texttt{10.30.0.0/16}, quy hoạch đối xứng tuyệt đối với Chi nhánh DBP: VLAN 10 (\texttt{10.30.10.0/24}), VLAN 30 (\texttt{10.30.30.0/24}), VLAN 40 (\texttt{10.30.40.0/24}), VLAN 70 (\texttt{10.30.70.0/24}), VLAN 90 (\texttt{10.30.90.0/24}), và VLAN 99 (\texttt{10.30.99.0/24}).
+    \item \textbf{Trụ sở chính (Main Site):} Dải mạng tổng thể \texttt{10.10.0.0/16}. Bảng~\ref{tab:vlan_mainsite} chi tiết hóa việc phân bổ VLAN và chính sách định tuyến tầng mạng. VLAN 99 chỉ làm native VLAN lớp 2 trên trunk tại Main, không có subnet/gateway và không phải VLAN quản trị.
+    \item \textbf{Chi nhánh 1 (DBP):} Dải mạng \texttt{10.20.0.0/16}, gồm VLAN 10 Khám bệnh (\texttt{10.20.10.0/24}), VLAN 30 Thiết bị y tế (\texttt{10.20.30.0/24}), VLAN 40 Máy chủ chi nhánh (\texttt{10.20.40.0/24}), VLAN 70 Camera (\texttt{10.20.70.0/24}), VLAN 90 Quản trị (\texttt{10.20.90.0/24}) và VLAN 99 cho kết nối định tuyến/HSRP (\texttt{10.20.99.0/24}). Trunk dùng VLAN 1 làm native; VLAN 99 được gắn thẻ.
+    \item \textbf{Chi nhánh 2 (BHTQ):} Dải mạng \texttt{10.30.0.0/16}, gồm VLAN 10 (\texttt{10.30.10.0/24}), VLAN 30 (\texttt{10.30.30.0/24}), VLAN 40 (\texttt{10.30.40.0/24}), VLAN 70 Camera (\texttt{10.30.70.0/24}), VLAN 90 Quản trị (\texttt{10.30.90.0/24}) và VLAN 99 cho kết nối định tuyến/HSRP (\texttt{10.30.99.0/24}). Trunk dùng VLAN 1 làm native; VLAN 99 được gắn thẻ.
     \item \textbf{Mạng truyền dẫn điểm--điểm liên kết WAN (Point-to-Point /30):}
     \begin{itemize}[noitemsep,topsep=2pt]
         \item Kênh chính Carrier-R: \texttt{10.255.0.0/30} (WAN-R1), \texttt{10.255.0.4/30} (WAN-R2), \texttt{10.255.0.8/30} (DBP-R1), \texttt{10.255.0.12/30} (BHTQ-R1).
@@ -194,13 +194,15 @@ Dưới góc độ nghiên cứu khoa học và kỹ thuật mạng thực chi�
     \end{itemize}
     \item \textbf{Giả định về chuẩn hóa đóng gói 802.1Q và cơ chế truyền thông tin Multicast:}
     \begin{itemize}[noitemsep,topsep=2pt]
-        \item Trên các đường trunk kết nối giữa Router và Switch tại chi nhánh, nhằm giải quyết triệt để lỗi mô phỏng mất gói tin điều khiển của Packet Tracer khi xử lý khung tin không gắn thẻ (untagged frames), hệ thống thiết lập giả định chuẩn hóa: Subinterface quản lý và định tuyến \texttt{Gi0/0.99} sử dụng lệnh gắn thẻ rõ ràng \texttt{encapsulation dot1Q 99} (không sử dụng từ khóa \texttt{native}), trong khi Native VLAN trên toàn bộ Switch được cố định về VLAN 1 mặc định. Giả định này đảm bảo các gói tin Multicast sống còn của HSRP (\texttt{224.0.0.2}) và OSPF (\texttt{224.0.0.5}) được bảo vệ nguyên vẹn cấu trúc thẻ 802.1Q khi lưu chuyển qua tầng chuyển mạch Layer 2.
+        \item Trên các đường trunk giữa Router và Switch tại DBP/BHTQ, để khắc phục lỗi mô phỏng khi xử lý khung tin điều khiển không gắn thẻ, subinterface \texttt{Gi0/0.99} sử dụng \texttt{encapsulation dot1Q 99} (không có từ khóa \texttt{native}); trunk giữa các thiết bị tại chi nhánh dùng VLAN 1 làm native và VLAN 99 được gắn thẻ. Thiết lập này đã được kiểm chứng cho luồng OSPF/HSRP tại BHTQ; các luồng tương ứng tại DBP cần được kiểm tra sau khi tích hợp.
     \end{itemize}
     \item \textbf{Giả định về khả năng mở rộng và tốc độ tăng trưởng (Scalability Assumption):}
     \begin{itemize}[noitemsep,topsep=2pt]
         \item Căn cứ yêu cầu thực tế trong hồ sơ mời thầu Bệnh viện (tốc độ tăng trưởng khối lượng khám chữa bệnh và số lượng thiết bị đạt mức $20\%$ trong 5 năm), các dải mạng người dùng tại Trụ sở chính được cấp phát mặt nạ \texttt{/23} (cho phép mở rộng tới 510 máy trạm mỗi khối nhà) và dải mạng khách \texttt{/22} (cho phép tới 1022 kết nối đồng thời), đảm bảo không xảy ra hiện tượng cạn kiệt không gian địa chỉ.
     \end{itemize}
 \end{enumerate}
+
+\input{Content/security.tex}
 
 \newpage
 \section{Các tính năng chỉ mô phỏng một phần hoặc chưa kiểm chứng}
@@ -241,7 +243,7 @@ Bảng~\ref{tab:technical_limitations} phân loại cụ thể các tính năng 
 \textbf{1} & \textbf{IP SLA Tracking trên Cisco ASA} & \textbf{Mô phỏng một phần} \textit{(Thay bằng Static Route Metric)} & Hệ điều hành ASA 5506-X trên Packet Tracer không nhận diện bộ lệnh kiểm tra trạng thái chủ động \texttt{sla monitor} và \texttt{track ... rtr}. Trên thực tế sản xuất, tính năng này liên tục gửi gói tin ICMP thăm dò đầu xa để gỡ tuyến khi mất kết nối. Trong bài toán này, kiến trúc đã áp dụng cơ chế định tuyến tĩnh phân cấp độ ưu tiên Metric (\texttt{Metric 1} cho cổng \texttt{wan} và \texttt{Metric 10} cho cổng \texttt{backup-wan}) kết hợp trạng thái giao diện vật lý Link-Down. \\ \hline
 \textbf{2} & \textbf{Stateful HA Failover giữa 2 tường lửa ASA} & \textbf{Chưa kiểm chứng} \textit{(Không hỗ trợ trên simulator)} & Packet Tracer hoàn toàn không hỗ trợ giao thức đồng bộ bảng trạng thái kết nối (\texttt{conn} state và \texttt{xlate} NAT table) thông qua giao diện chuyên dụng Stateful Failover Link. Để giải quyết, mô hình tách rời thành kiến trúc phòng vệ chuyên biệt 2 lớp độc lập: \texttt{ASA1} đảm trách tường lửa nội bộ/WAN và \texttt{ASA2} bảo vệ vùng DMZ/Internet. \\ \hline
 \textbf{3} & \textbf{Chuyển kiểu mạng OSPF Point-to-Point trên Subinterface} & \textbf{Mô phỏng một phần} \textit{(Chạy mặc định Broadcast)} & Trình phân tích cú pháp IOS 15.1 của Packet Tracer báo lỗi \textit{"\% Invalid input detected"} khi nhập \texttt{ip ospf network point-to-point} trên cổng logic Subinterface \texttt{Gi0/0.99}. Do đó, hệ thống buộc phải vận hành ở chế độ mặc định \texttt{BROADCAST} (có tiến trình bầu chọn DR/BDR) với bộ định thời Hello 10s / Dead 40s. \\ \hline
-\textbf{4} & \textbf{HSRP kết hợp OSPF trên Native Subinterface} & \textbf{Giới hạn giả lập} \textit{(Đã xử lý bằng Tagged 802.1Q)} & Khi định cấu hình \texttt{encapsulation dot1Q 99 native} kết hợp đồng thời HSRP (\texttt{224.0.0.2}) và OSPF (\texttt{224.0.0.5}), bộ xử lý giả lập đánh rơi khung tin không gắn thẻ một chiều, làm láng giềng OSPF bị kẹt vĩnh viễn ở trạng thái \texttt{INIT/}\break\texttt{DROTHER}. Giải pháp khắc phục triệt để: Gỡ bỏ từ khóa \texttt{native}, chuyển Subinterface sang gắn thẻ chuẩn \texttt{encapsulation dot1Q 99}. \\ \hline
+\textbf{4} & \textbf{HSRP kết hợp OSPF trên Native Subinterface} & \textbf{Giới hạn giả lập} \textit{(Cấu hình ban đầu, đã khắc phục tại BHTQ)} & Ở cấu hình ban đầu, \texttt{encapsulation dot1Q 99 native} kết hợp HSRP (\texttt{224.0.0.2}) và OSPF (\texttt{224.0.0.5}) làm khung tin điều khiển bị xử lý một chiều, khiến láng giềng OSPF kẹt ở trạng thái \texttt{INIT/}\break\texttt{DROTHER}. Tại BHTQ, cấu hình cuối bỏ từ khóa \texttt{native}, dùng \texttt{encapsulation dot1Q 99}; trunk dùng VLAN 1 làm native. Cần xác nhận tương tự tại DBP. \\ \hline
 \textbf{5} & \textbf{Định tuyến theo chính sách (PBR) \& Giao thức BFD} & \textbf{Chưa kiểm chứng} \textit{(Không hỗ trợ trên simulator)} & Packet Tracer không hỗ trợ Route-map gán next-hop linh hoạt cho PBR cũng như giao thức phát hiện đứt tuyến siêu tốc BFD ($< 50\text{ ms}$). Thời gian hội tụ dự phòng dựa hoàn toàn vào chu kỳ của HSRP ($3\text{s}/10\text{s}$) và OSPF ($10\text{s}/40\text{s}$). \\ \hline
 \textbf{6} & \textbf{Tường lửa sâu NGFW (IPS/IDS) \& TACACS+ Chi tiết} & \textbf{Mô phỏng một phần} \textit{(Áp dụng Stateful L4 \& ACL)} & Tường lửa ASA chỉ thực thi kiểm tra trạng thái phiên ở tầng L3/L4 (\texttt{inspect dns, ftp, icmp, tftp}) và mở cổng qua Extended ACL; các tính năng lọc mã độc sâu (Deep Packet Inspection), giải mã TLS/SSL và phân quyền lệnh qua giao thức TACACS+ chỉ mang tính chất thiết kế lý thuyết. \\ \hline
 \textbf{7} & \textbf{IPsec Site-to-Site VPN \& Remote Access VPN} & \textbf{Mô phỏng thay thế} \textit{(Dùng định tuyến WAN trực tiếp)} & Mặc dù đề bài có yêu cầu phương án VPN cho chi nhánh và người dùng làm việc từ xa (Teleworker), trong tệp mô phỏng chính, kết nối đa chi nhánh được mô hình hóa trực tiếp thông qua hạ tầng Leased Line/Broadband để tập trung tối đa tài nguyên kiểm thử cơ chế chuyển mạch HSRP và OSPF. Phần kiến trúc VPN được trình bày độc lập dưới dạng tài liệu đặc tả thiết kế kỹ thuật. \\ \hline
@@ -263,7 +265,7 @@ Dưới phương diện phương pháp luận nghiên cứu (Research Methodolog
 Kịch bản demo được thiết kế theo phương pháp luận \textbf{Kiểm thử chức năng hộp đen} (Black-Box Functional Testing) kết hợp phương pháp \textbf{Bơm sự cố có kiểm soát} (Chaos Engineering \& Fault Injection). Toàn bộ quy trình được chia thành \textbf{5 giai đoạn kế tiếp nhau} (thời lượng thực hiện dự kiến: 15 đến 20 phút), chứng minh tuần tự từ trạng thái bình thường, năng lực kiểm soát bảo mật, cho đến khả năng phục hồi tự động khi xuất hiện các sự cố phần cứng và đứt cáp nghiêm trọng.
 
 \subsection{Giai đoạn 1: Kiểm tra trạng thái vận hành chuẩn và hội tụ giao thức}
-\textbf{Mục tiêu:} Chứng minh toàn bộ 25 thiết bị đã hoàn tất hội tụ, các cơ chế dự phòng cổng vào (HSRP) và bảng định tuyến động (OSPF) đang hoạt động chính xác theo phân công thiết kế ban đầu.
+\textbf{Mục tiêu:} Kiểm tra trạng thái HSRP/OSPF trên các thiết bị được nêu trong từng bước và xác nhận các tuyến cần thiết hoạt động. Các kết quả này không tự chứng minh toàn bộ 25 thiết bị đã được kiểm thử.
 
 \subsubsection{Bước 1.1: Kiểm tra trạng thái HSRP trên toàn bộ các cổng Gateway}
 Truy cập vào giao diện dòng lệnh (CLI) của các thiết bị đóng vai trò trạm chuyển tiếp chính và phụ để kiểm tra trạng thái nhóm HSRP:
@@ -331,7 +333,7 @@ Trace complete.
 \textbf{Phân tích khoa học:} Gói tin đi thẳng qua tuyến cáp thuê riêng \texttt{Carrier-R} với độ trễ cực thấp ($\approx 3\text{ ms}$) và tổng số chặng tối ưu (4 hops). Tuyến dự phòng qua \texttt{ISP2-R} hoàn toàn không có lưu lượng đi qua trong điều kiện bình thường.
 
 \subsection{Giai đoạn 2: Kiểm thử an ninh phân vùng, DMZ và kiểm soát truy cập}
-\textbf{Mục tiêu:} Chứng minh hệ thống tuân thủ nghiêm ngặt các quy định an toàn thông tin y tế, cô lập hoàn toàn lưu lượng khách vãng lai và bảo vệ mặt phẳng quản trị.
+\textbf{Mục tiêu:} Kiểm tra phân đoạn Guest, dịch vụ Web DMZ và giới hạn quản trị trong mô phỏng. Kết quả từng phép thử không đồng nghĩa toàn bộ 30 ca SEC đã được chạy hoặc đạt.
 
 \subsubsection{Thử nghiệm 2.1: Cô lập mạng khách (Guest WiFi Isolation)}
 Trên máy tính xách tay của bệnh nhân/khách vãng lai kết nối qua mạng WiFi khách (\texttt{LAP\_PT} thuộc VLAN 60, IP nhận động \texttt{10.10.60.100}):
@@ -348,10 +350,12 @@ Request timed out.
 ip access-list extended ACL-GUEST-ISOLATE
  permit udp any eq bootpc any eq bootps
  permit udp any host 10.10.40.10 eq domain
+ permit tcp 10.10.60.0 0.0.3.255 host 10.10.40.10 eq domain
  deny ip 10.10.60.0 0.0.3.255 10.0.0.0 0.255.255.255
- permit ip any any
+ permit tcp 10.10.60.0 0.0.3.255 any eq www
+ permit tcp 10.10.60.0 0.0.3.255 any eq 443
     \end{lstlisting}
-    \item Mở trình duyệt Web trên \texttt{LAP\_PT} truy cập địa chỉ máy chủ Web cổng thông tin DMZ (\texttt{http://10.10.50.10}) hoặc ra Internet $\rightarrow$ \textbf{Thành công $100\%$}. Điều này chứng minh quy tắc \texttt{permit ip any any} ở cuối danh sách cho phép khách vãng lai duyệt Internet bình thường nhưng loại trừ triệt để khả năng tấn công vào vùng mạng \texttt{10.0.0.0/8}.
+    \item Thử truy cập máy chủ Web DMZ \texttt{http://10.10.50.10}. Theo thứ tự ACL trên, kết nối phải bị chặn vì địa chỉ đích thuộc \texttt{10.0.0.0/8}. Truy cập Internet chỉ được ACL cho phép qua DNS tới máy chủ DNS đã chỉ định và TCP/80, TCP/443; các giao thức/cổng khác bị từ chối ngầm. Kết quả truy cập DMZ trước đây được ghi là thành công đã bị bỏ vì mâu thuẫn với ACL. Cần chạy lại sau khi áp dụng cấu hình này và lưu kết quả thực tế trước khi đánh dấu PASS.
 \end{enumerate}
 
 \subsubsection{Thử nghiệm 2.2: Dịch vụ Web DMZ và kiểm thử Static NAT từ ngoài Internet}
@@ -361,7 +365,7 @@ Từ máy tính giả lập người dùng ngoài Internet kết nối thông qu
     \begin{center}
         \texttt{http://203.162.10.3}
     \end{center}
-    \item \textbf{Hiện tượng quan sát:} Trang thông tin điện tử của Bệnh viện hiển thị thành công.
+    \item \textbf{Kết quả được ghi nhận trong mô phỏng:} Trang thông tin điện tử của Bệnh viện hiển thị thành công qua HTTP/80. Cần lưu ảnh chụp hoặc log phiên NAT/ACL để làm bằng chứng kiểm thử có thể đối chiếu.
     \item \textbf{Cơ chế xử lý tại tường lửa ASA2:}
     \begin{itemize}[noitemsep,topsep=2pt]
         \item Khối NAT tĩnh: \texttt{nat (dmz,outside) static 203.162.10.3} ánh xạ trong suốt từ IP thực \texttt{10.10.50.10} ra ngoài.
@@ -374,16 +378,16 @@ Thử nghiệm khả năng chống truy cập bất hợp pháp vào thiết b�
 \begin{enumerate}
     \item Từ máy tính bác sĩ thông thường thuộc VLAN 10 (\texttt{10.10.10.50}), mở Command Prompt và gõ lệnh:
     \begin{lstlisting}[language=csh]
-C:\> ssh -l netadmin 10.10.90.2
+C:\> ssh -l [ADMIN_USER] 10.10.90.2
 Connecting to 10.10.90.2:22...
 % Connection refused by remote host.
     \end{lstlisting}
     Gói tin bị từ chối ngay lập tức do cơ chế lọc \texttt{access-class 10 in} trên đường truyền VTY của Switch lõi.
     \item Từ trạm nhảy quản trị được cấp quyền duy nhất \textbf{\texttt{JUMP\_HOST}} (\texttt{10.10.90.30}):
     \begin{lstlisting}[language=csh]
-C:\> ssh -l netadmin 10.10.90.2
+C:\> ssh -l [ADMIN_USER] 10.10.90.2
 Open
-Password: 
+Password: [REDACTED]
 Core-SW1#
     \end{lstlisting}
     Đăng nhập thành công và cấp quyền đặc quyền tối cao \texttt{privilege 15}.
@@ -502,7 +506,7 @@ Toàn bộ quá trình nghiên cứu, triển khai và kiểm thử hệ thống
 \textbf{TC-05} & Truy vết đường đi từ DBP sang Server BHTQ (\texttt{10.30.40.10}) & Rớt gói tại chặng cuối (Hop 4: * * *). & \textbf{PASS} & \textbf{Nguyên nhân:} Gói tin đến được router BHTQ-R1 nhưng Server đích \texttt{10.30.40.10} bị cấu hình thiếu địa chỉ Default Gateway.\newline
 \textbf{Xử lý:} Cấu hình Default Gateway trỏ về VIP HSRP \texttt{10.30.40.1} trên máy chủ; kiểm tra gán đúng Access VLAN 40 trên switch. \\ \hline
 \textbf{TC-06} & Kiểm tra thông mạch trực tiếp qua kênh chính Leased Line & Đạt tỷ lệ 5/5 (100\%), RTT trung bình $2\text{ ms}$. & \textbf{PASS} & \textbf{Đánh giá:} Tuyến chính qua Carrier-R có độ trễ cực thấp, đường truyền ổn định, chiếm quyền ưu tiên tuyệt đối khi không có sự cố. \\ \hline
-\textbf{TC-07} & Kiểm tra tính đồng bộ cấu hình running-config trên 25 thiết bị & Xuất toàn bộ running-config chuẩn hóa. & \textbf{PASS} & \textbf{Đánh giá:} Toàn bộ chính sách ACL phân vùng, cơ chế Static NAT/Dynamic PAT và bảng định tuyến dự phòng đã sẵn sàng cho vận hành. \\ \hline
+\textbf{TC-07} & Kiểm tra running-config trên 15 thiết bị được liệt kê trong \texttt{test.md} (trong tổng số 25 thiết bị) & Đã xuất running-config của 15 thiết bị. & \textbf{PASS có giới hạn} & \textbf{Đánh giá:} Chỉ xác nhận các cấu hình đã xuất; chưa đủ bằng chứng khẳng định cả 25 thiết bị đã được sao lưu hoặc toàn bộ chính sách đã sẵn sàng vận hành. \\ \hline
 \end{longtable}
 \end{small}
 
@@ -510,6 +514,6 @@ Toàn bộ quá trình nghiên cứu, triển khai và kiểm thử hệ thống
 Để kết thúc phiên nghiệm thu và đưa hệ thống vào trạng thái sẵn sàng bàn giao:
 \begin{enumerate}
     \item Thực hiện rà soát lần cuối bảng định tuyến trên 4 router biên và 2 switch lõi bằng lệnh \texttt{show ip route} để đảm bảo không còn tuyến mồ côi hoặc sai lệch Administrative Distance.
-    \item Chạy lệnh \texttt{write memory} trên toàn bộ 25 thiết bị nhằm sao lưu cấu hình chuẩn (Golden Config) vào bộ nhớ NVRAM.
+    \item Chạy lệnh \texttt{write memory} trên các thiết bị có cấu hình trong mô hình và lưu bản sao lưu. TC-07 hiện chỉ ghi nhận đã xuất cấu hình 15/25 thiết bị; cần bổ sung 10 thiết bị còn lại trước khi xác nhận bàn giao đầy đủ.
     \item Đóng gói tệp mô phỏng nghiệm thu cuối cùng và lưu trữ vào kho lưu trữ kỹ thuật của Bệnh viện theo đúng tiêu chuẩn bàn giao dự án công nghệ thông tin.
 \end{enumerate}

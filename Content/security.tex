@@ -1,0 +1,223 @@
+\section{Thiết kế bảo mật và kiểm soát truy cập}
+\label{sec:security_architecture}
+
+\subsection{Mục đích, phạm vi và nguồn thiết kế}
+Phần này trình bày đánh giá và đề xuất kiểm soát bảo mật cho topology cuối cùng được mô tả trong báo cáo, gồm Main Site, DBP và BHTQ. Các VLAN, subnet, thiết bị biên và luồng WAN trong phần này được đồng bộ theo mục quy hoạch và cấu hình mô phỏng của báo cáo; các khuyến nghị bảo mật được phân biệt với những gì báo cáo ghi nhận là đã cấu hình hoặc kiểm thử. Ma trận truy cập, hướng dẫn ACL và test plan là các sản phẩm chi tiết đi kèm.
+
+Không gian địa chỉ tổng là Main \texttt{10.10.0.0/16}, DBP \texttt{10.20.0.0/16}, BHTQ \texttt{10.30.0.0/16}; các liên kết WAN dùng các subnet point-to-point trong \texttt{10.255.0.0/24}. Dải \texttt{/16} là không gian địa chỉ tổng của mỗi cơ sở, không phải subnet đầu cuối dùng chung.
+
+\subsection{Tài sản và đánh giá rủi ro ban đầu}
+Mức đánh giá dưới đây là ưu tiên thiết kế định tính, cần được chủ sở hữu hệ thống và nhóm xác nhận; không thay thế khảo sát chuyên sâu hoặc phân tích mối đe dọa.
+
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{2.6cm}|p{3.3cm}|p{2.7cm}|p{5.8cm}|}
+\caption{Tài sản trọng yếu, rủi ro và biện pháp bảo vệ} \label{tab:security_assets_risks} \\
+\hline
+\textbf{Tài sản/vùng} & \textbf{Vị trí theo topology báo cáo} & \textbf{Mức quan trọng} & \textbf{Rủi ro và hướng bảo vệ} \\ \hline
+\endfirsthead
+\multicolumn{4}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
+\hline
+\textbf{Tài sản/vùng} & \textbf{Vị trí theo topology báo cáo} & \textbf{Mức quan trọng} & \textbf{Rủi ro và hướng bảo vệ} \\ \hline
+\endhead
+\hline
+\multicolumn{4}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
+\endfoot
+\hline
+\endlastfoot
+
+HIS, RIS-PACS, LIS, CRM và cơ sở dữ liệu & Server Farm Main, VLAN 40 & Rất cao & Truy cập trái phép, rò rỉ hoặc sửa dữ liệu bệnh nhân; giới hạn nguồn và đích theo dịch vụ, phân quyền ứng dụng, bảo vệ dữ liệu và kiểm thử khôi phục bản sao lưu. \\ \hline
+Máy chủ chi nhánh & VLAN Server 40 tại DBP/BHTQ & Cao & Truy cập trái phép hoặc lan truyền sự cố giữa các cơ sở; chỉ cho phép luồng nghiệp vụ/quản trị đã duyệt và ghi nhật ký phiên truy cập. \\ \hline
+Thiết bị y tế kết nối mạng & VLAN 30 tại từng cơ sở & Rất cao & Thiết bị cũ hoặc khó cập nhật có thể bị xâm nhập, ảnh hưởng dịch vụ lâm sàng; phân vùng riêng và xác nhận giao thức với nhà sản xuất trước khi mở quy tắc. \\ \hline
+Máy trạm nhân viên & Main VLAN 10/20; DBP/BHTQ VLAN 10 & Cao & Mã độc hoặc tài khoản bị chiếm quyền có thể lan tới Server Farm; giới hạn quyền theo ứng dụng, bảo vệ tài khoản và ghi nhật ký. \\ \hline
+Web và dịch vụ công khai & DMZ Main, VLAN 50 & Cao & Dịch vụ bị khai thác làm bàn đạp vào mạng nội bộ; chỉ công bố máy chủ/dịch vụ được duyệt và mặc định chặn kết nối khởi tạo từ DMZ tới LAN. \\ \hline
+Wi-Fi khách & Guest Main, VLAN 60 & Trung bình & Thiết bị khách truy cập trái phép LAN hoặc gây quá tải; chỉ cho phép dịch vụ Internet được phê duyệt và cô lập khỏi các vùng nội bộ. \\ \hline
+AP/WLC và SSID không dây & AP tại các cơ sở; Guest Main VLAN 60 & Cao & Cấu hình sai SSID/VLAN hoặc chiếm quyền AP/WLC; giữ Guest tách khỏi mạng nhân viên, ánh xạ Staff Wi-Fi chưa nêu trong báo cáo. \\ \hline
+Camera/NVR & VLAN 70 tại Main, DBP và BHTQ & Cao & Thiết bị IoT bị chiếm quyền hoặc rò rỉ video; chỉ cho phép camera kết nối tới NVR/kho lưu trữ đã xác nhận và mặc định chặn lưu lượng ra Internet. \\ \hline
+Thiết bị mạng và hệ thống quản trị & VLAN 90 tại Main, DBP và BHTQ & Rất cao & Lộ thông tin quản trị hoặc thay đổi trái phép ảnh hưởng toàn mạng; chỉ cho phép máy quản trị được duyệt qua SSH và lưu nhật ký. \\ \hline
+Firewall, Edge Router và WAN & Thiết bị biên tại Main; WAN liên cơ sở & Rất cao & Cấu hình sai, xâm nhập biên hoặc sự cố đường truyền làm gián đoạn dịch vụ; rà soát thay đổi, giới hạn luồng và kiểm thử chuyển đổi dự phòng. \\ \hline
+Nhật ký và bằng chứng kiểm thử & Hệ thống ghi nhật ký/nhóm dự án & Cao & Thiếu nhật ký làm chậm phát hiện/điều tra; đồng bộ thời gian, giới hạn quyền đọc/sửa và lưu bằng chứng theo quy định nhóm. \\ \hline
+\end{longtable}
+\end{small}
+
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{4.0cm}|p{2.1cm}|p{2.1cm}|p{6.2cm}|}
+\caption{Tóm tắt các rủi ro ưu tiên} \label{tab:security_risk_priority} \\
+\hline
+\textbf{Tình huống} & \textbf{Khả năng} & \textbf{Tác động} & \textbf{Ưu tiên xử lý kiến trúc} \\ \hline
+\endfirsthead
+\multicolumn{4}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
+\hline
+\textbf{Tình huống} & \textbf{Khả năng} & \textbf{Tác động} & \textbf{Ưu tiên xử lý kiến trúc} \\ \hline
+\endhead
+\hline
+\multicolumn{4}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
+\endfoot
+\hline
+\endlastfoot
+
+Guest hoặc thiết bị cá nhân truy cập trái phép mạng nội bộ & Trung bình & Cao & Cao: cô lập Guest, chỉ cho Internet và kiểm thử các luồng bị chặn. \\ \hline
+Máy trạm nhân viên bị mã độc/chiếm tài khoản & Trung bình & Rất cao & Cao: giới hạn truy cập theo nghiệp vụ, bảo vệ quản trị và lưu log. \\ \hline
+Dịch vụ công khai hoặc máy chủ DMZ bị khai thác & Trung bình & Rất cao & Cao: tách DMZ, chỉ mở dịch vụ công khai được duyệt, chặn DMZ khởi tạo kết nối vào LAN. \\ \hline
+Lây nhiễm ngang giữa các cơ sở qua WAN & Trung bình & Cao & Cao: kiểm soát luồng liên cơ sở và chốt phương án OSPF/IPsec trước khi triển khai. \\ \hline
+Thiết bị y tế khó cập nhật bị xâm nhập & Trung bình & Rất cao & Cao: tách Medical, chỉ mở đích/cổng có xác nhận của nhà sản xuất và chủ ứng dụng. \\ \hline
+Camera/NVR bị chiếm quyền hoặc rò rỉ video & Trung bình & Cao & Cao: cô lập camera, giới hạn tới NVR/kho lưu trữ, mặc định chặn Internet. \\ \hline
+Lộ thông tin quản trị hoặc cấu hình sai tường lửa/WAN & Thấp--trung bình & Rất cao & Cao: giới hạn nguồn quản trị, rà soát thay đổi, kiểm thử chuyển đổi dự phòng và lưu bằng chứng. \\ \hline
+Thiếu nhật ký hoặc Wi-Fi khách quá tải & Trung bình & Trung bình--cao & Trung bình: xác định nguồn/thời hạn lưu nhật ký; giữ mạng khách tách biệt và chốt yêu cầu giới hạn tải nếu cần. \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Các vùng bảo mật theo topology cuối cùng trong báo cáo}
+Bảng~\ref{tab:security_zones_report} đồng bộ VLAN/subnet với quy hoạch và cấu hình mô phỏng được trình bày trong báo cáo. Mức tin cậy là đánh giá thiết kế, không phải thuộc tính bảo đảm của VLAN.
+
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{2.2cm}|p{3.8cm}|p{1.5cm}|p{3.4cm}|p{3.3cm}|}
+\caption{Các vùng bảo mật, địa chỉ chuẩn và mục đích bảo vệ} \label{tab:security_zones_report} \\
+\hline
+\textbf{Vùng bảo mật} & \textbf{VLAN/subnet theo báo cáo} & \textbf{Mức tin cậy} & \textbf{Thành phần/mục đích} & \textbf{Nguyên tắc phân tách} \\ \hline
+\endfirsthead
+\multicolumn{5}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
+\hline
+\textbf{Vùng bảo mật} & \textbf{VLAN/subnet theo báo cáo} & \textbf{Mức tin cậy} & \textbf{Thành phần/mục đích} & \textbf{Nguyên tắc phân tách} \\ \hline
+\endhead
+\hline
+\multicolumn{5}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
+\endfoot
+\hline
+\endlastfoot
+
+Staff LAN -- Main & VLAN 10 \texttt{10.10.10.0/23}; VLAN 20 \texttt{10.10.20.0/23} & Trung bình & Máy trạm nhân viên tại hai tòa nhà & Chỉ tới ứng dụng và dịch vụ được duyệt; không quản trị thiết bị hoặc truy cập trực tiếp cơ sở dữ liệu. \\ \hline
+Staff LAN -- DBP & VLAN 10 \texttt{10.20.10.0/24} & Trung bình & Máy trạm nhân viên DBP & Chỉ tới dịch vụ nghiệp vụ được duyệt qua WAN. \\ \hline
+Staff LAN -- BHTQ & VLAN 10 \texttt{10.30.10.0/24} & Trung bình & Máy trạm nhân viên BHTQ & Chỉ tới dịch vụ nghiệp vụ được duyệt qua WAN. \\ \hline
+Medical -- Main & VLAN 30 \texttt{10.10.30.0/24} & Thấp--trung bình & Thiết bị y tế & Chỉ cho phép luồng lâm sàng đã được khảo sát và duyệt. \\ \hline
+Medical -- DBP & VLAN 30 \texttt{10.20.30.0/24} & Thấp--trung bình & Thiết bị y tế & Chỉ cho phép luồng lâm sàng đã được khảo sát và duyệt. \\ \hline
+Medical -- BHTQ & VLAN 30 \texttt{10.30.30.0/24} & Thấp--trung bình & Thiết bị y tế & Chỉ cho phép luồng lâm sàng đã được khảo sát và duyệt. \\ \hline
+Server Farm -- Main & VLAN 40 \texttt{10.10.40.0/24} & Cao & HIS, LIS, DB, CRM và dịch vụ cập nhật & Tách dịch vụ ứng dụng/cơ sở dữ liệu theo máy chủ và cổng; không công bố trực tiếp ra Internet. \\ \hline
+Server -- DBP & VLAN 40 \texttt{10.20.40.0/24} & Cao & Hai máy chủ chi nhánh theo báo cáo & Chỉ mở dịch vụ ứng dụng/quản trị được duyệt. \\ \hline
+Server -- BHTQ & VLAN 40 \texttt{10.30.40.0/24} & Cao & Hai máy chủ chi nhánh theo báo cáo & Chỉ mở dịch vụ ứng dụng/quản trị được duyệt. \\ \hline
+DMZ -- Main & VLAN 50 \texttt{10.10.50.0/24} & Thấp & Web và dịch vụ công khai & Chặn kết nối khởi tạo vào LAN; chỉ công bố máy chủ/dịch vụ sau khi xác nhận. \\ \hline
+Guest Wi-Fi -- Main & VLAN 60 \texttt{10.10.60.0/22} & Rất thấp & Wi-Fi khách, chỉ phục vụ Internet & Cô lập khỏi mạng nội bộ; chỉ cho phép lưu lượng ra Internet đã duyệt. \\ \hline
+Camera -- Main & VLAN 70 \texttt{10.10.70.0/24} & Thấp & Camera/NVR; vị trí NVR cần xác nhận & Chỉ cho phép camera tới NVR/kho lưu trữ được duyệt; mặc định chặn Internet. \\ \hline
+Voice -- Main & VLAN 80 \texttt{10.10.80.0/24} & Trung bình & Điện thoại IP nội bộ & Chỉ cho phép dịch vụ thoại và quản trị được xác định; áp dụng QoS theo cấu hình. \\ \hline
+Management -- Main & VLAN 90 \texttt{10.10.90.0/24} & Cao & Quản trị thiết bị mạng & Chỉ máy quản trị được ủy quyền qua SSH. \\ \hline
+Management -- DBP & VLAN 90 \texttt{10.20.90.0/24} & Cao & Quản trị thiết bị DBP & Chỉ máy quản trị được ủy quyền qua SSH. \\ \hline
+Management -- BHTQ & VLAN 90 \texttt{10.30.90.0/24} & Cao & Quản trị thiết bị BHTQ & Chỉ máy quản trị được ủy quyền qua SSH. \\ \hline
+Camera -- DBP & VLAN 70 \texttt{10.20.70.0/24} & Thấp & Camera chi nhánh & Chỉ cho phép luồng tới máy chủ ghi hình/quản lý được xác định. \\ \hline
+Camera -- BHTQ & VLAN 70 \texttt{10.30.70.0/24} & Thấp & Camera chi nhánh & Chỉ cho phép luồng tới máy chủ ghi hình/quản lý được xác định. \\ \hline
+VLAN điều khiển -- DBP/BHTQ & VLAN 99 \texttt{10.20.99.0/24}, \texttt{10.30.99.0/24} & Trung bình & Mạng kết nối định tuyến/HSRP theo mô phỏng & Không dùng làm VLAN quản trị; trunk native được đặt ở VLAN 1 theo phần kiểm thử. \\ \hline
+Transit -- Main & VLAN 250 \texttt{10.10.250.0/29}; VLAN 253 \texttt{10.10.253.0/29} & Cao & Kết nối Core tới ASA1 và đường dự phòng & Chỉ cho phép lưu lượng cần thiết giữa Core và Firewall; không dùng làm mạng đầu cuối. \\ \hline
+WAN chính -- Carrier-R & \texttt{10.255.0.0/30}, \texttt{10.255.0.4/30}, \texttt{10.255.0.8/30}, \texttt{10.255.0.12/30} & Trung bình & Các liên kết WAN chính theo sơ đồ & Chỉ cho phép OSPF giữa các router ngang hàng đã xác định. \\ \hline
+WAN dự phòng -- ISP2-R & \texttt{10.255.0.16/30}, \texttt{10.255.0.20/30}, \texttt{10.255.0.24/30} & Trung bình & Các liên kết WAN dự phòng & Chỉ dùng khi tuyến leased line chính không khả dụng. \\ \hline
+\end{longtable}
+\end{small}
+
+\noindent Tại DBP/BHTQ, VLAN 99 được dùng cho liên kết định tuyến/HSRP và trunk dùng VLAN 1 làm native; cấu hình Main giữ VLAN 99 làm native lớp 2, không có subnet/gateway và không phải VLAN quản trị. Việc khắc phục native VLAN đã được kiểm chứng tại BHTQ; DBP cần kiểm tra riêng. Mạng Guest và Camera tại Main giữ nguyên VLAN 60/70. Địa chỉ \texttt{10.255.0.0/30}, \texttt{10.255.0.4/30}, \texttt{10.255.0.8/30}, \texttt{10.255.0.12/30} là các liên kết Carrier-R; \texttt{10.255.0.16/30}, \texttt{10.255.0.20/30}, \texttt{10.255.0.24/30} là các liên kết dự phòng ISP2-R.
+
+\subsection{Nguyên tắc phân vùng}
+\begin{enumerate}
+    \item Phân vùng theo chức năng và mức độ tin cậy; không mặc định cho phép truy cập giữa các mạng thuộc cùng một cơ sở.
+    \item Cô lập mạng Wi-Fi khách khỏi mạng nội bộ; tách DMZ khỏi Server Farm; bảo vệ riêng Medical, Camera và Management.
+    \item Chỉ mở luồng liên vùng/liên cơ sở theo nhu cầu nghiệp vụ được xác nhận, gồm nguồn, đích, giao thức/cổng và hướng khởi tạo.
+    \item Tại Main, ASA2 thực hiện NAT/PAT ra ISP1; tại chi nhánh, ISP2-R là tuyến dự phòng khi leased line mất kết nối. Không mô tả Internet chi nhánh như một tuyến bắt buộc đi qua Main.
+    \item Mặc định từ chối các luồng liên vùng và lưu lượng ra Internet chưa có quy tắc cho phép cụ thể. Ngoại lệ nghiệp vụ phải được chủ dịch vụ duyệt.
+    \item Tách rõ cấu hình được mô tả trong báo cáo, khuyến nghị bảo mật và nội dung chưa có bằng chứng kiểm thử.
+\end{enumerate}
+
+\subsection{Tóm tắt ma trận kiểm soát truy cập}
+Ma trận đầy đủ gồm các quy tắc AC-01--AC-24 trong \texttt{access\_control\_matrix.csv}; bảng~\ref{tab:security_matrix_summary} tóm tắt các luồng chính theo topology trong báo cáo. Chỉ nêu địa chỉ/cổng đã xuất hiện trong cấu hình mô phỏng; dịch vụ chưa được xác định được ghi rõ là chưa xác định.
+
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{1.3cm}|p{2.9cm}|p{3.0cm}|p{2.2cm}|p{4.2cm}|}
+\caption{Tóm tắt ma trận truy cập bảo mật} \label{tab:security_matrix_summary} \\
+\hline
+\textbf{Mã quy tắc} & \textbf{Nguồn} & \textbf{Đích} & \textbf{Hành động/dịch vụ} & \textbf{Điều kiện và lý do} \\ \hline
+\endfirsthead
+\multicolumn{5}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
+\hline
+\textbf{Mã quy tắc} & \textbf{Nguồn} & \textbf{Đích} & \textbf{Hành động/dịch vụ} & \textbf{Điều kiện và lý do} \\ \hline
+\endhead
+\hline
+\multicolumn{5}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
+\endfoot
+\hline
+\endlastfoot
+
+AC-01--03 & Nhân viên tại ba cơ sở & Máy chủ Main \texttt{10.10.40.10} và máy chủ ứng dụng & DHCP/DNS; cổng HIS/DB chưa nêu & Báo cáo dùng máy chủ Main cho DNS/DHCP relay; chưa chỉ định đầy đủ cổng ứng dụng. \\ \hline
+AC-04--05 & Main Staff; chi nhánh khi lỗi leased line & Internet qua ASA2/ISP1; tuyến dự phòng ISP2-R & NAT/PAT; dịch vụ web & Main ra Internet qua ASA2/ISP1; các chi nhánh chuyển sang ISP2-R khi đường chính lỗi. \\ \hline
+AC-06 & Staff LAN & Guest VLAN 60 & Từ chối mọi lưu lượng & Tách mạng khách khỏi mạng nhân viên. \\ \hline
+AC-07--08 & Guest VLAN 60 & Mạng nội bộ, DMZ và WAN liên cơ sở & Từ chối mọi lưu lượng & Guest chỉ dùng DNS/HTTP/HTTPS ra Internet theo AC-09--10; AC-08 là đề xuất cần nhóm duyệt. \\ \hline
+AC-09--10 & Guest VLAN 60 & DNS \texttt{10.10.40.10} và Internet & DNS UDP/TCP 53; HTTP/HTTPS TCP 80/443 & Chỉ cho phép DNS tới máy chủ nội bộ đã chỉ định và web ra Internet; các cổng khác bị từ chối ngầm. \\ \hline
+AC-11 & Internet \texttt{203.162.10.3} & Web Server \texttt{10.10.50.10}, DMZ VLAN 50 & TCP/80 qua Static NAT & Đây là địa chỉ và cổng được dùng trong mô phỏng; báo cáo chỉ mở HTTP/80. \\ \hline
+AC-12--13 & Internet & LAN/Server Farm và vùng quản trị Firewall & Từ chối; chặn cổng quản trị 22/443 & Không công bố LAN hoặc giao diện quản trị. \\ \hline
+AC-14 & Máy quản trị VLAN 90 tại cả ba cơ sở & Thiết bị mạng được duyệt & SSH TCP/22 & Báo cáo xác định Jump Host Main \texttt{10.10.90.30}; không nêu host quản trị chi nhánh. \\ \hline
+AC-15--16 & Camera VLAN 70 tại các cơ sở & NVR/Internet & Cổng NVR chưa nêu; chặn Internet theo đề xuất & Báo cáo không cung cấp kiểm thử camera/NVR; cần xác nhận luồng thực tế. \\ \hline
+AC-17--18 & Router WAN ngang hàng & Router WAN ngang hàng & OSPF, IP protocol 89; IPsec chưa cấu hình & OSPF chạy trên các liên kết WAN mô phỏng; không ghi nhận đường hầm IPsec. \\ \hline
+AC-19 & Staff/Server tại cơ sở nguồn & Ứng dụng tại cơ sở khác & Cổng nghiệp vụ chưa xác định & Chỉ mở sau khi chốt máy chủ, cổng và nhu cầu liên cơ sở. \\ \hline
+AC-20 & Mạng nội bộ Main & Internet qua ASA2/ISP1 & Dynamic PAT; Web DMZ Static NAT & Đây là cơ chế được mô tả trong báo cáo; chi nhánh có tuyến ISP2 dự phòng khi leased line lỗi. \\ \hline
+AC-21--23 & Mọi vùng hoặc DMZ & Vùng/Internet chưa có ngoại lệ cho phép & Từ chối mặc định & Chặn luồng liên vùng, DMZ khởi tạo vào nội bộ và lưu lượng ra Internet chưa duyệt; ghi nhật ký có chọn lọc. \\ \hline
+AC-24 & Medical VLAN 30 tại các cơ sở & Dịch vụ lâm sàng được duyệt & Giao thức/cổng chưa xác định & Chưa mở trước khi nhà sản xuất và chủ ứng dụng xác nhận. \\ \hline
+\end{longtable}
+\end{small}
+
+\subsection{Hướng dẫn triển khai ACL, Firewall, NAT/PAT và VPN}
+Tài liệu \texttt{acl\_implementation\_guide.md} cần phân biệt cấu hình mô phỏng đã trình bày trong báo cáo với các khuyến nghị tăng cường. Cấu hình hiện có dùng ASA1/ASA2, Core SVI/ACL, các router WAN và các VLAN/subnet ở trên; IPsec, VPN người dùng từ xa và dịch vụ NVR chưa được mô tả là đã triển khai.
+
+\begin{enumerate}
+    \item \textbf{Xác nhận trước cấu hình:} Dùng sơ đồ thiết bị, SVI/subinterface và địa chỉ ở phần topology cuối của báo cáo; xác nhận thêm các đích dịch vụ chưa nêu, quyền của chủ hệ thống và phương án hoàn nguyên trước mọi thay đổi.
+    \item \textbf{Vị trí thực thi và thứ tự quy tắc:} Dùng tường lửa theo trạng thái tại biên Internet/DMZ; dùng ACL Layer 3 trên SVI/router để phân đoạn VLAN hoặc bảo vệ mặt phẳng điều khiển khi phù hợp. Xác định rõ vị trí thực thi để tránh bỏ lọt hoặc áp dụng chính sách hai lần. Đặt quy tắc cho phép cụ thể trước quy tắc từ chối tổng quát và kiểm tra cơ chế từ chối mặc định của thiết bị.
+    \item \textbf{Mạng Wi-Fi khách:} ACL trong báo cáo đã được chỉnh để cho phép DHCP, DNS tới \texttt{10.10.40.10}, chặn đích thuộc \texttt{10.0.0.0/8}, rồi chỉ cho TCP/80 và TCP/443 ra ngoài; các cổng khác bị từ chối ngầm. Vì Web DMZ \texttt{10.10.50.10} thuộc \texttt{10.0.0.0/8}, Guest phải bị chặn khi truy cập DMZ. Cần áp dụng ACL đã chỉnh vào mô phỏng và chạy lại kiểm thử trước khi ghi nhận PASS.
+    \item \textbf{DMZ/Internet:} Báo cáo ánh xạ Static NAT từ \texttt{203.162.10.3} tới Web Server \texttt{10.10.50.10} và mở TCP/80. Không mô tả HTTPS/443 là đã triển khai. Chặn truy cập Internet tới LAN và vùng quản trị; chỉ mở luồng DMZ khởi tạo vào nội bộ khi có dependency được duyệt.
+    \item \textbf{NAT/PAT:} ASA2 thực hiện Static NAT cho Web Server và Dynamic PAT cho truy cập Internet qua ISP1 tại Main. ISP2-R cung cấp tuyến dự phòng cho các chi nhánh khi leased line lỗi. Không ghi rằng mọi Internet của chi nhánh đi qua Main; cấu hình NAT cụ thể trên tuyến ISP2 cần kiểm tra trong running-config.
+    \item \textbf{OSPF/IPsec:} OSPF được mô phỏng trên các liên kết Carrier-R; cho phép IP protocol 89 giữa đúng router ngang hàng, không dùng TCP/UDP port 89. Báo cáo không ghi nhận cấu hình IPsec; IKE UDP/500, NAT-T UDP/4500 và ESP IP protocol 50 chỉ là yêu cầu nếu sau này bổ sung VPN.
+    \item \textbf{VPN cho người dùng từ xa:} Không có cấu hình VPN người dùng từ xa trong topology hoàn thiện. Nếu triển khai ngoài phạm vi mô phỏng, dùng xác thực cá nhân/MFA nếu hỗ trợ, thiết bị đầu cuối được quản lý và quyền theo vai trò; chỉ cấp tới ứng dụng cần thiết.
+    \item \textbf{Quản trị, IDS/IPS và ghi nhật ký:} VLAN quản trị là VLAN 90 tại cả ba cơ sở; Jump Host Main là \texttt{10.10.90.30} và Syslog/NTP Main là \texttt{10.10.90.20}. Báo cáo mô tả SSH từ Jump Host và chặn nguồn khác qua \texttt{access-class 10 in}; không ghi nhận IDS/IPS hoặc VPN đã cấu hình. Không đưa mật khẩu thực vào tài liệu bàn giao.
+    \item \textbf{Kiểm thử sau thay đổi:} Kiểm tra cả luồng được phép và bị chặn, bản dịch NAT/trạng thái phiên, bộ đếm ACL và OSPF/VPN nếu đã chọn; lưu cấu hình, nhật ký/ảnh và kết quả thực tế so với dự kiến. Nếu dịch vụ bị ảnh hưởng, hoàn nguyên theo bản sao lưu.
+\end{enumerate}
+
+\subsection{Kế hoạch kiểm thử và trạng thái bằng chứng}
+Kế hoạch kiểm thử chi tiết gồm 30 ca SEC-01--SEC-30 trong CSV bàn giao riêng. CSV được cung cấp trước đó ghi các ca SEC là \textbf{Chưa thực hiện (Not run)}. Báo cáo mô tả Guest ping tới Server Farm bị chặn, truy cập Web từ Internet và SSH từ Jump Host thành công; ACL Guest vừa được chỉnh trong tài liệu nên các ca Guest phải chạy lại. Bảng dưới đây tách kết quả đã ghi nhận khỏi các ca còn chờ kiểm thử/bằng chứng.
+
+\begin{small}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|p{2.2cm}|p{3.4cm}|p{5.8cm}|p{2.6cm}|}
+\caption{Nhóm kiểm thử bảo mật và tiêu chí nghiệm thu} \label{tab:security_test_summary} \\
+\hline
+\textbf{Ca kiểm thử} & \textbf{Luồng kiểm tra} & \textbf{Kết quả mong đợi/bằng chứng chính} & \textbf{Trạng thái hiện tại} \\ \hline
+\endfirsthead
+\multicolumn{4}{c}{{\bfseries Bảng \thetable\ -- tiếp theo từ trang trước}} \\
+\hline
+\textbf{Ca kiểm thử} & \textbf{Luồng kiểm tra} & \textbf{Kết quả mong đợi/bằng chứng chính} & \textbf{Trạng thái hiện tại} \\ \hline
+\endhead
+\hline
+\multicolumn{4}{|r|}{{\textit{Xem tiếp ở trang sau...}}} \\ \hline
+\endfoot
+\hline
+\endlastfoot
+
+SEC-01--04, SEC-29 & Nhân viên truy cập DNS/ứng dụng; thử cổng chưa được duyệt & Máy chủ Main \texttt{10.10.40.10} được dùng cho DNS/DHCP; cổng ứng dụng chưa được nêu đầy đủ. & Định tuyến tới máy chủ có ghi nhận; các ca ACL/dịch vụ SEC vẫn Not run. \\ \hline
+SEC-05--07, SEC-23 & Truy cập Internet và chuyển đổi dự phòng WAN & Main dùng ASA2/ISP1; chi nhánh dùng ISP2-R khi leased line lỗi. & TC-01--06 trong \texttt{test.md} ghi PASS sau khắc phục định tuyến; không xác nhận mọi chính sách PAT/ACL. \\ \hline
+SEC-08--12 & Cô lập Guest; Staff tới Guest & ACL cho phép DNS và TCP/80, TCP/443 ra Internet; mạng nội bộ và DMZ bị chặn. & Ping tới Server Farm từng được báo timeout. ACL đã chỉnh trong báo cáo chưa được xác nhận trong Packet Tracer; chạy lại Guest-to-LAN/DMZ/Internet trước khi PASS. \\ \hline
+SEC-13--15 & Internet tới Web DMZ; Internet tới LAN/quản trị & Web công khai dùng \texttt{203.162.10.3} ánh xạ \texttt{10.10.50.10}, TCP/80; LAN/quản trị phải bị chặn. & Phần mô phỏng báo HTTP thành công; không có bằng chứng tương ứng trong \texttt{test.md}. \\ \hline
+SEC-16--17 & Máy thường và Jump Host truy cập SSH quản trị & Máy thường VLAN 10 bị từ chối; Jump Host \texttt{10.10.90.30} được phép tới thiết bị quản trị. & Phần mô phỏng báo đúng hai kết quả này; cần giữ output/cấu hình ACL làm bằng chứng. \\ \hline
+SEC-18--19 & Camera VLAN 70 tới NVR và Internet & Chỉ luồng tới NVR được duyệt; Internet bị chặn theo chính sách đề xuất. & Chưa thấy ca kiểm thử Camera/NVR trong báo cáo. \\ \hline
+SEC-20--22, SEC-30 & OSPF/IPsec và luồng ứng dụng liên cơ sở & OSPF được dùng trên WAN; IPsec chưa được mô tả là đã cấu hình. & OSPF/định tuyến có kiểm thử trong \texttt{test.md}; IPsec và ACL ứng dụng chưa được xác nhận. \\ \hline
+SEC-24--28 & Nhật ký, từ chối mặc định, DMZ tới nội bộ, lưu lượng ra và Medical & Cần kiểm tra log, luồng khởi tạo DMZ, egress và ứng dụng lâm sàng riêng. & Chưa có bằng chứng kiểm thử cụ thể trong báo cáo. \\ \hline
+\end{longtable}
+\end{small}
+
+\noindent\textbf{Tiêu chí Pass/Fail:} Pass khi kết quả quan sát khớp kết quả mong đợi, luồng được phép vẫn hoạt động và có bằng chứng tương ứng; Fail khi luồng bị cấm vẫn thành công, luồng được phép bị chặn hoặc bằng chứng không đủ để xác định kết quả. Ghi \textit{Chưa thực hiện (Not run)} nếu chưa chạy kiểm thử. Chỉ thực hiện các ca có điều kiện sau khi đã xác nhận đích, dịch vụ, thời gian kiểm thử và phê duyệt. Không quét dải nội bộ; chỉ kiểm tra đích đã được cho phép.
+
+\noindent \texttt{test.md} ghi các kiểm tra định tuyến/OSPF/HSRP và xuất cấu hình; báo cáo mô tả thêm Guest ping bị chặn, Web công khai và Jump Host đăng nhập thành công. Những kết quả đó không xác nhận toàn bộ 30 ca SEC. Vì ACL Guest đã được chỉnh trong tài liệu, cần áp dụng và chạy lại các ca Guest trước khi xác nhận trạng thái cuối.
+
+\subsection{Tính năng chưa thể mô phỏng đầy đủ}
+\begin{itemize}
+    \item \textbf{IDS/IPS/NGFW:} Packet Tracer không mô phỏng đầy đủ chữ ký phát hiện/ngăn chặn, phân tích nội dung sâu hoặc giải mã TLS. Đề xuất dùng nền tảng IDS/IPS phù hợp trong môi trường thực tế; kiểm thử ở chế độ giám sát trước khi bật chế độ chặn, đặc biệt với thiết bị y tế.
+    \item \textbf{VPN liên cơ sở và VPN người dùng từ xa:} WAN trong mô hình hiện được định tuyến trực tiếp; chưa có bằng chứng đường hầm IPsec hoặc VPN truy cập từ xa đã được cấu hình/kiểm thử. Cần xác nhận thiết bị, địa chỉ peer, các subnet được bảo vệ, phương thức xác thực và ghi nhật ký trước khi triển khai.
+    \item \textbf{AAA/MFA, quản lý khóa và SIEM:} Mô hình không chứng minh đầy đủ RADIUS/TACACS+, MFA, vòng đời chứng thư/khóa bí mật hay tương quan nhật ký tập trung. Đây là khuyến nghị triển khai, không phải tính năng đã nghiệm thu.
+    \item \textbf{Hiệu năng và tính sẵn sàng thực tế:} Packet Tracer không chứng minh thông lượng, tải đồng thời Wi-Fi, hiệu năng IPS, độ trễ VPN hoặc khả năng chuyển đổi dự phòng phần cứng. Cần thử nghiệm trong môi trường thiết bị/ảo hóa phù hợp trước khi triển khai thực tế.
+\end{itemize}
+
+\noindent Các giới hạn mô phỏng tổng quát khác được trình bày tại Mục~\ref{sec:limitations}.
