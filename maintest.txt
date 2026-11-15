@@ -1,0 +1,77 @@
+# KỊCH BẢN KIỂM THỬ BẮT BUỘC (MANDATORY TEST CASES)
+**Dự án:** Thiết kế và Mô phỏng Hệ thống Mạng Bệnh viện Đa khoa (Main Site & 2 Auxiliary Sites)
+**Dựa trên:** Yêu cầu đồ án (Assignment Requirements) - Step 5 & Talented Engineer Program
+
+Tài liệu này liệt kê các kịch bản kiểm thử (Test Cases) bắt buộc phải thực hiện và đạt kết quả "PASS" trong buổi báo cáo/demo đồ án. Các công cụ sử dụng: `ping`, `traceroute`, kiểm tra trên trình duyệt web, và các lệnh `show` trên Cisco Packet Tracer/GNS3.
+
+---
+
+## PHẦN 1: KẾT NỐI NỘI BỘ VÀ LIÊN MẠNG (LAN & INTER-VLAN)
+*Yêu cầu tham chiếu: "Connect between PCs in the same VLAN", "Connect PCs between VLANs"*
+
+| Mã TC | Hạng mục kiểm thử (Test Case) | Lệnh thực thi (Công cụ) | Kết quả kỳ vọng (Expected Result) | Trạng thái |
+| :--- | :--- | :--- | :--- | :---: |
+| **LAN-01** | Kiểm tra kết nối giữa các PC trong **cùng một VLAN** (cùng phòng ban) tại Main Site hoặc nhánh. | Lệnh `ping <IP_đích>` từ PC1 sang PC2 cùng VLAN. | Trả về kết quả `Reply from...` (Success rate 100%). | [ ] |
+| **LAN-02** | Kiểm tra kết nối **liên VLAN** (Inter-VLAN Routing) giữa các phòng ban khác nhau. | Lệnh `ping <IP_đích>` từ PC thuộc VLAN Staff sang PC thuộc VLAN Management. | Ping thành công. Khẳng định Core Switch/Router đã định tuyến Lớp 3 tốt. | [ ] |
+| **LAN-03** | Kiểm tra hệ thống Camera giám sát (Surveillance). | `ping` từ trạm quản lý (IT/Security VLAN) đến dải IP của hệ thống Camera. | Kết nối thông suốt đến các Camera. | [ ] |
+
+---
+
+## PHẦN 2: KẾT NỐI DIỆN RỘNG (WAN & SITE-TO-SITE)
+*Yêu cầu tham chiếu: "Connect PCs between the main Site and the two Auxiliary Sites", "All traffic to the Internet passes through the main site"*
+
+| Mã TC | Hạng mục kiểm thử (Test Case) | Lệnh thực thi (Công cụ) | Kết quả kỳ vọng (Expected Result) | Trạng thái |
+| :--- | :--- | :--- | :--- | :---: |
+| **WAN-01** | Kết nối xuyên suốt từ Main Site (HCMC) đến Chi nhánh 1 (DBP) và ngược lại. | `ping <IP_nhánh_DBP>` từ PC tại Main Site. | Ping thành công, RTT ổn định. | [ ] |
+| **WAN-02** | Kết nối xuyên suốt từ Main Site (HCMC) đến Chi nhánh 2 (BHTQ) và ngược lại. | `ping <IP_nhánh_BHTQ>` từ PC tại Main Site. | Ping thành công, RTT ổn định. | [ ] |
+| **WAN-03** | Xác minh luồng dữ liệu (Traffic flow) từ chi nhánh ra Internet **phải đi qua Main Site**. | `traceroute 8.8.8.8` (hoặc IP External Web) từ PC tại chi nhánh DBP/BHTQ. | Các hop đi qua Router chi nhánh -> Router Main Site -> ASA Firewall -> ISP. | [ ] |
+
+---
+
+## PHẦN 3: KIỂM THỬ TRUY CẬP INTERNET VÀ DMZ
+*Yêu cầu tham chiếu: "Connect to servers in the DMZ", "Connect to the Internet to a Web server"*
+
+| Mã TC | Hạng mục kiểm thử (Test Case) | Lệnh thực thi (Công cụ) | Kết quả kỳ vọng (Expected Result) | Trạng thái |
+| :--- | :--- | :--- | :--- | :---: |
+| **DMZ-01** | Truy cập từ mạng nội bộ (LAN) vào các Server đặt tại phân vùng DMZ (HIS, PACS, Web...). | Dùng Web Browser trên PC nội bộ truy cập `http://<IP_DMZ_Server>`. | Trình duyệt hiển thị trang web nội bộ thành công. | [ ] |
+| **INT-01** | Truy cập Internet từ máy trạm trong bệnh viện. | Mở Web Browser trên PC nội bộ truy cập URL của External Web Server. | Trình duyệt hiển thị trang web bên ngoài thành công (NAT hoạt động). | [ ] |
+| **INT-02** | Kiểm tra cân bằng tải (Load-balancing) trên 2 đường DSL ra Internet. | `traceroute` ra Internet nhiều lần từ nhiều dải mạng khác nhau. | Lưu lượng được phân bổ qua cả 2 đường ISP (hoặc qua cơ chế Active/Active). | [ ] |
+
+---
+
+## PHẦN 4: KIỂM THỬ BẢO MẬT & PHÂN QUYỀN (SECURITY & ACLs)
+*Yêu cầu tham chiếu: "No connections from Customers’ devices to PCs on the LAN", "Talented engineer: apply security plan, add firewalls and configure ACLs"*
+
+| Mã TC | Hạng mục kiểm thử (Test Case) | Lệnh thực thi (Công cụ) | Kết quả kỳ vọng (Expected Result) | Trạng thái |
+| :--- | :--- | :--- | :--- | :---: |
+| **SEC-01** | **Cách ly luồng mạng Khách (Customer/Guest WiFi).** | `ping` từ thiết bị Khách (Customer Smartphone/Laptop) vào IP của PC nội bộ hoặc Server nội bộ. | **Bắt buộc FAIL** (`Request timed out`). Khách chỉ được ra Internet, không được chạm vào mạng nội bộ. | [ ] |
+| **SEC-02** | Cách ly mạng bên ngoài (Internet) truy cập trái phép vào LAN. | Đứng từ External PC (Internet) `ping` vào dải IP LAN nội bộ. | **Bắt buộc FAIL**. Firewall/ACL đã chặn kết nối khởi tạo từ Outside vào Inside. | [ ] |
+| **SEC-03** | Chính sách tường lửa (Firewall Rules) bảo vệ DMZ. | Truy cập từ Internet vào DMZ Server qua HTTP (Port 80/443). | **Thành công** (nếu cấu hình Public Web) hoặc **Bị chặn** (nếu là Server nội bộ HIS/PACS). Khớp với Security Plan. | [ ] |
+
+---
+
+## PHẦN 5: KIỂM THỬ TÍNH SẴN SÀNG CAO VÀ DỰ PHÒNG (HA & FAILOVER)
+*Yêu cầu tham chiếu: "high availability (HA), robustness when problems occur"*
+
+| Mã TC | Hạng mục kiểm thử (Test Case) | Lệnh thực thi (Công cụ) | Kết quả kỳ vọng (Expected Result) | Trạng thái |
+| :--- | :--- | :--- | :--- | :---: |
+| **HA-01** | Chuyển mạch dự phòng Core Switch / Gateway nội bộ (nếu có HSRP/VRRP). | Tắt nóng (shutdown/xóa cáp) Core Switch 1 hoặc R1. Lặp lại lệnh `ping -t` liên tục. | Mạng rớt 1-2 nhịp ping rồi tự động thông lại qua Core Switch 2 / R2. | [ ] |
+| **HA-02** | **Dự phòng liên kết WAN (SD-WAN/Leased line Failover).** | Rút cáp đường truyền Leased Line chính nối Main Site và Chi nhánh. | Traffic tự động bẻ lái sang đường truyền Backup (DSL/ISP2) mà không làm ngắt kết nối hệ thống. | [ ] |
+
+---
+
+## PHẦN 6: KIỂM THỬ VPN
+*Yêu cầu tham chiếu: "Propose a VPN configuration for site-to-site and for a teleworker"*
+
+| Mã TC | Hạng mục kiểm thử (Test Case) | Lệnh thực thi (Công cụ) | Kết quả kỳ vọng (Expected Result) | Trạng thái |
+| :--- | :--- | :--- | :--- | :---: |
+| **VPN-01** | Site-to-Site VPN (Giữa Main Site và Auxiliary Site qua nền Internet/Backup). | Lệnh `show crypto isakmp sa` và `show crypto ipsec sa` trên Router/Firewall. | Trạng thái đàm phán Phase 1 và Phase 2 báo Active/QM_IDLE. | [ ] |
+| **VPN-02** | Remote Access VPN cho nhân viên y tế từ xa (Teleworker). | Từ 1 Laptop bên ngoài Internet, sử dụng VPN Client kết nối vào mạng bệnh viện. | Laptop nhận IP thuộc dải VPN nội bộ và ping thấy hệ thống HIS/PACS Server. | [ ] |
+
+---
+*Ghi chú cho buổi Demo: Sinh viên cần chuẩn bị sẵn sơ đồ, mở sẵn các cửa sổ CLI (Command Line Interface) và sẵn sàng mô phỏng sự kiện đứt cáp (Xóa dây nối) để giáo viên quan sát sự phản hồi của tính năng High Availability.*
+```eof
+
+Tệp Markdown trên đã nhóm các yêu cầu của đồ án thành 6 hạng mục kiểm thử cực kỳ rõ ràng, giống như một checklist nghiệm thu dự án mạng thực tế. Bạn có thể chèn file này vào phần phụ lục của báo cáo Word hoặc sử dụng nó làm kịch bản thuyết trình trong buổi demo đồ án để ăn trọn điểm các phần liên quan đến Test và Security. 
+
+Cần tinh chỉnh thêm kịch bản cho một công nghệ cụ thể nào (như OSPF, BGP hay IPsec) thì bạn cứ phản hồi nhé!
